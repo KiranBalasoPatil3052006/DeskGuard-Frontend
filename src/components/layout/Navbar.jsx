@@ -1,17 +1,34 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaSearch, FaBell, FaUserCircle, FaSignOutAlt, FaBars, FaCheckDouble } from 'react-icons/fa';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FaSearch, FaBell, FaBars, FaCheckDouble } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { getUnreadNotificationCount, getNotifications, markAllNotificationsAsRead } from '../../services/notifications';
 
+const PAGE_TITLES = {
+  '/dashboard': 'Dashboard',
+  '/machines': 'Machines',
+  '/agents': 'Agents',
+  '/reports': 'Reports',
+  '/alerts': 'Alerts',
+  '/changes': 'Changes',
+  '/accounts': 'Accounts',
+  '/settings': 'Settings',
+  '/settings/alert-thresholds': 'Alert Thresholds',
+};
+
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const location = useLocation();
+  const { user } = useAuth();
   const [showSearch, setShowSearch] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifications, setRecentNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const searchRef = useRef(null);
+
+  const currentPageTitle = PAGE_TITLES[location.pathname] || 'DeskGuard';
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -76,11 +93,6 @@ const Navbar = ({ toggleSidebar }) => {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login', { replace: true });
-  };
-
   const formatTime = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -88,72 +100,141 @@ const Navbar = ({ toggleSidebar }) => {
   };
 
   return (
-    <div className="px-4 pt-4">
-      <nav className="top-navbar d-flex align-items-center justify-content-between px-4" style={{ borderRadius: '16px', height: '70px', zIndex: 900, position: 'relative', background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.8)' }}>
-      <div className="d-flex align-items-center">
+    <nav 
+      className="top-navbar d-flex align-items-center justify-content-between px-4"
+      style={{ 
+        background: 'var(--dg-white)', 
+        borderBottom: '1px solid var(--dg-border)', 
+        height: '56px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 900
+      }}
+    >
+      {/* Left side: Mobile toggle + Page Title */}
+      <div className="d-flex align-items-center gap-3">
         <button 
-          className="btn btn-link d-md-none me-3" 
+          className="btn btn-link d-md-none p-0" 
           onClick={toggleSidebar}
-          style={{ color: 'var(--text-body)' }}
+          style={{ color: 'var(--dg-text-secondary)', fontSize: '1.1rem' }}
         >
-          <FaBars size={20} />
+          <FaBars />
         </button>
+        <h4 style={{ 
+          margin: 0, 
+          fontSize: '1rem', 
+          fontWeight: 600, 
+          color: 'var(--dg-text-primary)',
+          letterSpacing: '-0.01em'
+        }}>
+          {currentPageTitle}
+        </h4>
       </div>
 
-      <div className="d-flex align-items-center gap-4">
-        {/* Search Icon */}
-        <div className="d-flex align-items-center">
+      {/* Right side: Search + Notifications */}
+      <div className="d-flex align-items-center gap-3">
+        {/* Search */}
+        <div className="d-flex align-items-center position-relative">
           {showSearch && (
-            <input 
-              type="text" 
-              className="form-control form-control-sm border-secondary me-3" 
-              placeholder="Search..." 
-              style={{ width: '200px', backgroundColor: 'var(--bg-card)', color: 'var(--text-body)', transition: 'width 0.3s' }}
+            <input
+              ref={searchRef}
+              type="text"
+              className="form-control form-control-sm"
+              placeholder="Search..."
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              style={{ 
+                width: '220px', 
+                fontSize: '0.8rem',
+                marginRight: '8px',
+                background: 'var(--dg-gray-50)',
+                border: '1px solid var(--dg-border)'
+              }}
               autoFocus
               onBlur={(e) => {
-                if(e.target.value === '') setShowSearch(false);
+                if (e.target.value === '') setShowSearch(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setShowSearch(false); setSearchValue(''); }
               }}
             />
           )}
-          <div 
-            className="cursor-pointer" 
-            style={{ color: 'var(--text-body)' }}
-            onClick={() => setShowSearch(!showSearch)}
+          <button 
+            onClick={() => { setShowSearch(!showSearch); }}
+            style={{
+              background: 'none', border: 'none', padding: '6px',
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              color: 'var(--dg-text-muted)', borderRadius: '6px',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--dg-text-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--dg-text-muted)'}
             title="Search"
           >
-            <FaSearch size={18} />
-          </div>
+            <FaSearch size={15} />
+          </button>
         </div>
 
-        {/* Notification Icon */}
+        {/* Notifications */}
         <div className="position-relative" ref={dropdownRef}>
-          <div 
-            className="cursor-pointer position-relative"
-            style={{ color: 'var(--text-body)' }}
+          <button
             onClick={handleBellClick}
+            style={{
+              background: 'none', border: 'none', padding: '6px',
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              color: 'var(--dg-text-muted)', borderRadius: '6px',
+              transition: 'all 0.15s', position: 'relative'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--dg-text-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--dg-text-muted)'}
             title="Notifications"
           >
-            <FaBell size={20} />
+            <FaBell size={16} />
             {unreadCount > 0 && (
-              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.6rem', minWidth: '18px', padding: '2px 5px' }}>
+              <span style={{
+                position: 'absolute', top: '0', right: '0',
+                background: 'var(--dg-danger)', color: 'white',
+                fontSize: '0.6rem', fontWeight: 700,
+                minWidth: '16px', height: '16px',
+                borderRadius: '99px', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                padding: '0 4px', transform: 'translate(4px, -4px)',
+                border: '2px solid var(--dg-white)'
+              }}>
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
-          </div>
+          </button>
 
+          {/* Notification Dropdown */}
           {showDropdown && (
-            <div className="position-absolute end-0 mt-2" style={{ width: '340px', zIndex: 1050, background: 'var(--bg-card, #fff)', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-              <div className="d-flex align-items-center justify-content-between px-3 py-2" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                <span className="fw-semibold" style={{ color: 'var(--text-body, #212529)', fontSize: '0.9rem' }}>Notifications</span>
+            <div style={{
+              position: 'absolute', right: 0, top: '100%', marginTop: '8px',
+              width: '340px', zIndex: 1050,
+              background: 'var(--dg-white)',
+              borderRadius: 'var(--dg-radius-lg)',
+              boxShadow: 'var(--dg-shadow-lg)',
+              border: '1px solid var(--dg-border)',
+              overflow: 'hidden'
+            }}>
+              <div className="d-flex align-items-center justify-content-between px-3 py-2" 
+                style={{ borderBottom: '1px solid var(--dg-border-light)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--dg-text-primary)', fontSize: '0.85rem' }}>
+                  Notifications
+                </span>
                 {unreadCount > 0 && (
-                  <button className="btn btn-sm btn-link text-decoration-none p-0" onClick={handleMarkAllRead} style={{ color: 'var(--bs-success, #198754)', fontSize: '0.8rem' }}>
-                    <FaCheckDouble className="me-1" />Mark all read
+                  <button 
+                    className="btn btn-sm btn-link text-decoration-none p-0" 
+                    onClick={handleMarkAllRead} 
+                    style={{ color: 'var(--dg-success)', fontSize: '0.75rem', fontWeight: 600 }}
+                  >
+                    <FaCheckDouble className="me-1" size={10} />Mark all read
                   </button>
                 )}
               </div>
-              <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+              <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
                 {recentNotifications.length === 0 ? (
-                  <div className="text-center py-4 text-muted" style={{ fontSize: '0.85rem' }}>
+                  <div className="text-center py-4" style={{ color: 'var(--dg-text-muted)', fontSize: '0.8rem' }}>
                     No notifications
                   </div>
                 ) : (
@@ -161,22 +242,30 @@ const Navbar = ({ toggleSidebar }) => {
                     <div
                       key={n.id}
                       className="px-3 py-2 cursor-pointer"
-                      style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', transition: 'background 0.15s', ...(n.is_read ? {} : { background: 'rgba(13, 110, 253, 0.04)' }) }}
+                      style={{ 
+                        borderBottom: '1px solid var(--dg-border-light)', 
+                        transition: 'background 0.1s',
+                        ...(n.is_read ? {} : { background: 'var(--dg-primary-light)' })
+                      }}
                       onClick={() => handleNotificationClick(n)}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.03)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = n.is_read ? '' : 'rgba(13, 110, 253, 0.04)'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--dg-bg-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = n.is_read ? '' : 'var(--dg-primary-light)'}
                     >
-                      <div className="fw-semibold" style={{ fontSize: '0.85rem', color: 'var(--text-body, #212529)' }}>{n.title}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #6c757d)' }} className="text-truncate">{n.body}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted, #adb5bd)' }}>{formatTime(n.created_at)}</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--dg-text-primary)' }}>{n.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--dg-text-muted)' }} className="text-truncate">{n.body}</div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--dg-gray-400)', marginTop: '2px' }}>{formatTime(n.created_at)}</div>
                     </div>
                   ))
                 )}
               </div>
               {recentNotifications.length > 0 && (
-                <div className="text-center py-2" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-                  <button className="btn btn-sm btn-link text-decoration-none" onClick={() => { setShowDropdown(false); navigate('/alerts'); }} style={{ color: 'var(--bs-primary, #0d6efd)', fontSize: '0.85rem' }}>
-                    View all alerts
+                <div className="text-center py-2" style={{ borderTop: '1px solid var(--dg-border-light)' }}>
+                  <button 
+                    className="btn btn-sm btn-link text-decoration-none" 
+                    onClick={() => { setShowDropdown(false); navigate('/alerts'); }} 
+                    style={{ color: 'var(--dg-primary)', fontSize: '0.8rem', fontWeight: 600 }}
+                  >
+                    View all alerts →
                   </button>
                 </div>
               )}
@@ -184,36 +273,32 @@ const Navbar = ({ toggleSidebar }) => {
           )}
         </div>
 
-        {/* User Info */}
-        <div 
-          className="d-flex align-items-center" 
-          style={{ gap: '10px' }}
-        >
-          <FaUserCircle size={32} className="text-success" />
-          <div className="d-none d-md-block text-start">
-            <div className="fw-semibold lh-1" style={{ color: 'var(--text-body)' }}>{user?.name || 'Admin User'}</div>
+        {/* User Avatar (visible on desktop) */}
+        <div className="d-none d-md-flex align-items-center" style={{ gap: '10px' }}>
+          <div style={{
+            width: '1px', height: '24px', background: 'var(--dg-border)', marginRight: '4px'
+          }} />
+          <img 
+            src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=256&auto=format&fit=crop" 
+            alt="Avatar" 
+            style={{
+              width: '32px', height: '32px', borderRadius: '50%',
+              objectFit: 'cover', border: '2px solid var(--dg-border)'
+            }}
+          />
+          <div className="text-start" style={{ lineHeight: 1.3 }}>
+            <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--dg-text-primary)' }}>
+              {user?.name || 'Admin User'}
+            </div>
             {user?.roles?.length > 0 && (
-              <small className="text-muted" style={{ fontSize: '0.75rem' }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--dg-text-muted)' }}>
                 {typeof user.roles[0] === 'object' ? user.roles[0]?.name : user.roles[0]}
-              </small>
+              </div>
             )}
           </div>
         </div>
-
-        {/* Logout Button */}
-        <div className="border-start border-secondary ps-4 ms-1">
-          <button 
-            className="btn btn-sm btn-outline-danger d-flex align-items-center rounded-pill px-3"
-            onClick={handleLogout}
-            title="Logout"
-          >
-            <FaSignOutAlt className="me-md-2" />
-            <span className="d-none d-md-inline fw-semibold">Logout</span>
-          </button>
-        </div>
       </div>
-      </nav>
-    </div>
+    </nav>
   );
 };
 

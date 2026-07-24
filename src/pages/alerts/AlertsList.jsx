@@ -87,260 +87,300 @@ const AlertsList = () => {
   return (
     <div className="container-fluid p-0">
       {/* Page Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="fw-bold mb-0" style={{ color: 'var(--text-body)' }}>Alerts</h3>
-        <button className="btn btn-outline-primary btn-sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['alerts'] })} disabled={isRefreshing}>
-          <FaSync className={isRefreshing ? 'spin-animation' : ''} /> Refresh
-        </button>
+      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4 gap-3">
+        <div>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>System Alerts</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--dg-text-muted)', margin: 0 }}>
+            Acknowledge and resolve real-time threshold warnings from hosts.
+          </p>
+        </div>
+        <div>
+          <button 
+            className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['alerts'] })} 
+            disabled={isRefreshing}
+            style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+          >
+            <FaSync className={isRefreshing ? 'spin-icon' : ''} size={11} /> 
+            <span>Refresh Alerts</span>
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Total Alerts', value: summary.total, icon: <FaBell />, color: 'var(--primary-color)' },
-          { label: 'Critical', value: summary.critical, icon: <FaExclamationCircle />, color: '#EF4444' },
-          { label: 'Warning', value: summary.warning, icon: <FaExclamationTriangle />, color: '#F59E0B' },
-          { label: 'Resolved', value: summary.resolved, icon: <FaCheckCircle />, color: '#22C55E' },
+          { label: 'Total Alerts', value: summary.total, icon: <FaBell />, color: 'blue' },
+          { label: 'Critical Severity', value: summary.critical, icon: <FaExclamationCircle />, color: 'red' },
+          { label: 'Warning Severity', value: summary.warning, icon: <FaExclamationTriangle />, color: 'orange' },
+          { label: 'Resolved Alerts', value: summary.resolved, icon: <FaCheckCircle />, color: 'green' },
         ].map((card, idx) => (
-          <div className="col-6 col-lg-3" key={idx}>
-            <div className="card p-3 border-0 h-100" style={{ borderRadius: '16px' }}>
-              <div className="d-flex align-items-center gap-3">
-                <div className="p-2 rounded-3" style={{ backgroundColor: `${card.color}20`, color: card.color, fontSize: '20px' }}>
+          <div className="col-12 col-sm-6 col-xl-3" key={idx}>
+            <div className="summary-stat-card">
+              <div className="summary-card-header">
+                <div className={`summary-icon-wrapper icon-${card.color}`}>
                   {card.icon}
                 </div>
-                <div>
-                  <div className="text-muted small">{card.label}</div>
-                  <div className="fw-bold fs-4">{card.value}</div>
-                </div>
+                <span>{card.label}</span>
+              </div>
+              <div className="summary-card-value">{card.value}</div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--dg-text-muted)' }}>
+                Recorded alert count
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="card p-3 mb-4" style={{ borderRadius: '16px' }}>
-        <div className="row g-3 align-items-center">
-          <div className="col-12 col-md-4">
-            <div className="input-group">
-              <span className="input-group-text bg-transparent border-end-0"><FaSearch className="text-muted" /></span>
-              <input
-                type="text"
-                className="form-control border-start-0"
-                placeholder="Search alerts..."
-                value={searchFilter}
-                onChange={e => setSearchFilter(e.target.value)}
-                style={{ backgroundColor: 'var(--bg-input)' }}
-              />
+      {/* Filters Card */}
+      <div className="card mb-4">
+        <div className="card-body">
+          <div className="row g-3 align-items-end">
+            {/* Search */}
+            <div className="col-12 col-md-6">
+              <label className="form-label">Search Alerts</label>
+              <div className="position-relative">
+                <FaSearch className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)', fontSize: '0.82rem' }} />
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Search alerts..." 
+                  value={searchFilter}
+                  onChange={e => setSearchFilter(e.target.value)}
+                  style={{ paddingLeft: '32px' }}
+                />
+              </div>
             </div>
-          </div>
-          <div className="col-6 col-md-3">
-            <select
-              className="form-select"
-              value={severityFilter}
-              onChange={e => setSeverityFilter(e.target.value)}
-              style={{ backgroundColor: 'var(--bg-input)' }}
-            >
-              <option value="">All Severity</option>
-              <option value="critical">Critical</option>
-              <option value="warning">Warning</option>
-              <option value="info">Info</option>
-            </select>
-          </div>
-          <div className="col-6 col-md-3">
-            <select
-              className="form-select"
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              style={{ backgroundColor: 'var(--bg-input)' }}
-            >
-              <option value="">All Status</option>
-              <option value="open">Open</option>
-              <option value="acknowledged">Acknowledged</option>
-              <option value="resolved">Resolved</option>
-            </select>
+            {/* Severity Filter */}
+            <div className="col-6 col-md-3">
+              <label className="form-label">Severity</label>
+              <select
+                className="form-select"
+                value={severityFilter}
+                onChange={e => setSeverityFilter(e.target.value)}
+              >
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="warning">Warning</option>
+                <option value="info">Info</option>
+              </select>
+            </div>
+            {/* Status Filter */}
+            <div className="col-6 col-md-3">
+              <label className="form-label">Status</label>
+              <select
+                className="form-select"
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                <option value="open">Open</option>
+                <option value="acknowledged">Acknowledged</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Alerts Table */}
-      <div className="card" style={{ borderRadius: '16px' }}>
-        {loading ? (
-          <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status" />
-          </div>
-        ) : alerts.length === 0 ? (
-          <div className="text-center py-5">
-            <FaCheckCircle className="text-success mb-3" style={{ fontSize: '48px' }} />
-            <h6 className="fw-bold mb-1" style={{ color: 'var(--text-body)' }}>All Clear</h6>
-            <p className="text-muted mb-0">No alerts match the current filters</p>
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="table table-borderless table-hover align-middle mb-0">
-              <thead>
-                <tr className="text-muted small">
-                  <th className="ps-4">Severity</th>
-                  <th>Alert</th>
-                  <th>Machine</th>
-                  <th>Status</th>
-                  <th>Time</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {alerts.map(alert => (
-                  <tr
-                    key={alert.id}
-                    onClick={() => setSelectedAlert(selectedAlert?.id === alert.id ? null : alert)}
-                    style={{ cursor: 'pointer' }}
-                    className={selectedAlert?.id === alert.id ? 'table-active' : ''}
-                  >
-                    <td className="ps-4">{getSeverityBadge(alert.severity)}</td>
-                    <td>
-                      <div className="fw-semibold">{alert.title}</div>
-                      <div className="text-muted small text-truncate" style={{ maxWidth: '250px' }}>
-                        {alert.description}
-                      </div>
-                    </td>
-                    <td>
-                      {alert.machine ? (
-                        <Link
-                          to={`/machines/${alert.machine_id || alert.machine?.id}`}
-                          className="text-decoration-none fw-semibold"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          {alert.machine?.device_name || alert.machine?.hostname || 'View Machine'}
-                        </Link>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </td>
-                    <td>{getStatusBadge(alert.status)}</td>
-                    <td className="text-muted small">
-                      {alert.created_at ? new Date(alert.created_at).toLocaleString() : '—'}
-                    </td>
-                    <td onClick={e => e.stopPropagation()}>
-                      {alert.status === 'open' && (
-                        <button
-                          className="btn btn-sm btn-outline-warning me-1"
-                          onClick={() => handleAcknowledge(alert.id)}
-                          disabled={actionLoading === alert.id}
-                        >
-                          {actionLoading === alert.id ? '...' : 'Acknowledge'}
-                        </button>
-                      )}
-                      {alert.status !== 'resolved' && (
-                        <button
-                          className="btn btn-sm btn-outline-success"
-                          onClick={() => { setShowResolveModal(alert.id); setResolveNote(''); }}
-                          disabled={actionLoading === alert.id}
-                        >
-                          Resolve
-                        </button>
-                      )}
-                    </td>
+      {/* Alerts Table Card */}
+      <div className="card mb-4">
+        <div className="card-body p-0">
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status" />
+            </div>
+          ) : alerts.length === 0 ? (
+            <div className="text-center py-5">
+              <FaCheckCircle className="text-success mb-3" style={{ fontSize: '42px', opacity: 0.8 }} />
+              <h6 className="fw-bold" style={{ color: 'var(--dg-text-primary)' }}>No Alerts Pending</h6>
+              <p className="text-muted small">All clear! No warnings match the current filtering parameters.</p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th className="ps-4">Severity</th>
+                    <th>Alert Details</th>
+                    <th>Machine Host</th>
+                    <th>Status</th>
+                    <th>Triggered At</th>
+                    <th className="pe-4 text-end">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {alerts.map(alert => (
+                    <tr
+                      key={alert.id}
+                      onClick={() => setSelectedAlert(selectedAlert?.id === alert.id ? null : alert)}
+                      style={{ cursor: 'pointer' }}
+                      className={selectedAlert?.id === alert.id ? 'table-active' : ''}
+                    >
+                      <td className="ps-4">
+                        <span className={`badge ${alert.severity === 'critical' ? 'badge-critical' : alert.severity === 'warning' ? 'badge-warning' : 'badge-info'}`}>
+                          {alert.severity}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="fw-semibold" style={{ fontSize: '0.85rem' }}>{alert.title}</div>
+                        <div className="text-muted small text-truncate mt-0.5" style={{ maxWidth: '240px', fontSize: '0.75rem' }}>
+                          {alert.description}
+                        </div>
+                      </td>
+                      <td>
+                        {alert.machine ? (
+                          <Link
+                            to={`/machines/${alert.machine_id || alert.machine?.id}`}
+                            className="fw-semibold text-primary text-decoration-none"
+                            onClick={e => e.stopPropagation()}
+                            style={{ fontSize: '0.82rem' }}
+                          >
+                            {alert.machine?.device_name || alert.machine?.hostname || 'View Machine'}
+                          </Link>
+                        ) : (
+                          <span className="text-muted small">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge ${alert.status === 'resolved' ? 'badge-online' : alert.status === 'acknowledged' ? 'badge-warning' : 'badge-critical'}`}>
+                          {alert.status}
+                        </span>
+                      </td>
+                      <td className="text-muted" style={{ fontSize: '0.78rem' }}>
+                        {alert.created_at ? new Date(alert.created_at).toLocaleString() : '—'}
+                      </td>
+                      <td className="pe-4 text-end" onClick={e => e.stopPropagation()}>
+                        <div className="d-inline-flex gap-2">
+                          {alert.status === 'open' && (
+                            <button
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => handleAcknowledge(alert.id)}
+                              disabled={actionLoading === alert.id}
+                              style={{ fontSize: '0.72rem', padding: '4px 10px' }}
+                            >
+                              {actionLoading === alert.id ? '...' : 'Acknowledge'}
+                            </button>
+                          )}
+                          {alert.status !== 'resolved' && (
+                            <button
+                              className="btn btn-sm btn-primary"
+                              onClick={() => { setShowResolveModal(alert.id); setResolveNote(''); }}
+                              disabled={actionLoading === alert.id}
+                              style={{ fontSize: '0.72rem', padding: '4px 10px' }}
+                            >
+                              Resolve
+                            </button>
+                          )}
+                          {alert.status === 'resolved' && (
+                            <span className="text-muted small px-2">Closed</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         {/* Pagination */}
-        {lastPage > 1 && (
-          <div className="d-flex justify-content-center gap-2 p-3">
-            <button
-              className="btn btn-sm btn-outline-primary"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(p => p - 1)}
-            >
-              Previous
-            </button>
-            <span className="d-flex align-items-center text-muted small">
-              Page {currentPage} of {lastPage}
-            </span>
-            <button
-              className="btn btn-sm btn-outline-primary"
-              disabled={currentPage === lastPage}
-              onClick={() => setCurrentPage(p => p + 1)}
-            >
-              Next
-            </button>
+        {lastPage > 1 && !loading && (
+          <div className="card-footer bg-transparent border-top border-light d-flex justify-content-between align-items-center py-3">
+            <span className="text-muted small">Page {currentPage} of {lastPage}</span>
+            <div className="dg-pagination">
+              <button 
+                className="page-btn"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => p - 1)}
+              >
+                &lt;
+              </button>
+              {Array.from({ length: lastPage }, (_, i) => i + 1).map(p => (
+                <button 
+                  key={p} 
+                  className={`page-btn ${p === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(p)}
+                >
+                  {p}
+                </button>
+              ))}
+              <button 
+                className="page-btn"
+                disabled={currentPage === lastPage}
+                onClick={() => setCurrentPage(p => p + 1)}
+              >
+                &gt;
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Resolve Modal */}
+      {/* Resolve Dialog Modal */}
       {showResolveModal && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
-          onClick={() => setShowResolveModal(null)}
-        >
-          <div
-            className="card p-4"
-            style={{ width: '440px', borderRadius: '16px' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h5 className="fw-bold mb-3" style={{ color: 'var(--text-body)' }}>Resolve Alert</h5>
-            <textarea
-              className="form-control mb-3"
-              rows={3}
-              placeholder="Resolution note (optional)"
-              value={resolveNote}
-              onChange={e => setResolveNote(e.target.value)}
-              style={{ backgroundColor: 'var(--bg-input)' }}
-            />
-            <div className="d-flex justify-content-end gap-2">
-              <button className="btn btn-secondary" onClick={() => setShowResolveModal(null)}>Cancel</button>
-              <button
-                className="btn btn-success"
-                onClick={() => handleResolve(showResolveModal)}
-                disabled={actionLoading === showResolveModal}
-              >
-                {actionLoading === showResolveModal ? 'Resolving...' : 'Resolve'}
-              </button>
+        <div className="modal d-block" onClick={() => setShowResolveModal(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Resolve Alert</h5>
+                <button type="button" className="btn-close" onClick={() => setShowResolveModal(null)} />
+              </div>
+              <div className="modal-body">
+                <label className="form-label">Resolution Note</label>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  placeholder="Resolution details, actions taken..."
+                  value={resolveNote}
+                  onChange={e => setResolveNote(e.target.value)}
+                />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowResolveModal(null)}>Cancel</button>
+                <button 
+                  className="btn btn-success" 
+                  onClick={() => handleResolve(showResolveModal)}
+                  disabled={actionLoading === showResolveModal}
+                >
+                  {actionLoading === showResolveModal ? 'Resolving...' : 'Confirm Resolve'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Detail Panel */}
+      {/* Alert Detail Dialog Modal */}
       {selectedAlert && (
-        <div className="card p-4 mt-4" style={{ borderRadius: '16px' }}>
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="fw-bold mb-0" style={{ color: 'var(--text-body)' }}>Alert Details</h5>
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelectedAlert(null)}>✕</button>
-          </div>
-          <div className="row g-3">
-            <div className="col-12 col-md-6">
-              <div className="text-muted small">Title</div>
-              <div className="fw-semibold">{selectedAlert.title}</div>
-            </div>
-            <div className="col-12 col-md-6">
-              <div className="text-muted small">Severity</div>
-              {getSeverityBadge(selectedAlert.severity)}
-            </div>
-            <div className="col-12">
-              <div className="text-muted small">Description</div>
-              <div>{selectedAlert.description || '—'}</div>
-            </div>
-            <div className="col-12 col-md-4">
-              <div className="text-muted small">Status</div>
-              {getStatusBadge(selectedAlert.status)}
-            </div>
-            <div className="col-12 col-md-4">
-              <div className="text-muted small">Created</div>
-              <div className="fw-semibold">{selectedAlert.created_at ? new Date(selectedAlert.created_at).toLocaleString() : '—'}</div>
-            </div>
-            <div className="col-12 col-md-4">
-              <div className="text-muted small">Machine</div>
-              {selectedAlert.machine ? (
-                <Link to={`/machines/${selectedAlert.machine_id || selectedAlert.machine?.id}`} className="fw-semibold text-decoration-none">
-                  {selectedAlert.machine?.device_name || selectedAlert.machine?.hostname || 'View Machine'}
-                </Link>
-              ) : <span>—</span>}
+        <div className="modal d-block" onClick={() => setSelectedAlert(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Alert Details</h5>
+                <button type="button" className="btn-close" onClick={() => setSelectedAlert(null)} />
+              </div>
+              <div className="modal-body">
+                <div className="d-flex flex-column gap-3">
+                  {[
+                    { label: 'Title', value: selectedAlert.title },
+                    { label: 'Severity', value: <span className={`badge ${selectedAlert.severity === 'critical' ? 'badge-critical' : selectedAlert.severity === 'warning' ? 'badge-warning' : 'badge-info'}`}>{selectedAlert.severity}</span> },
+                    { label: 'Description', value: <div className="text-muted font-normal" style={{ fontSize: '0.78rem', whiteSpace: 'pre-line' }}>{selectedAlert.description || '—'}</div> },
+                    { label: 'Status', value: <span className={`badge ${selectedAlert.status === 'resolved' ? 'badge-online' : selectedAlert.status === 'acknowledged' ? 'badge-warning' : 'badge-critical'}`}>{selectedAlert.status}</span> },
+                    { label: 'Machine Host', value: selectedAlert.machine ? <Link to={`/machines/${selectedAlert.machine_id || selectedAlert.machine?.id}`} className="fw-semibold text-primary text-decoration-none" onClick={() => setSelectedAlert(null)}>{selectedAlert.machine?.device_name || selectedAlert.machine?.hostname || 'View Machine'}</Link> : '—' },
+                    { label: 'Triggered At', value: selectedAlert.created_at ? new Date(selectedAlert.created_at).toLocaleString() : '—' },
+                  ].map((row, idx) => (
+                    <div key={idx} className="d-flex justify-content-between align-items-center py-1.5" style={{ borderBottom: idx < 5 ? '1px solid var(--dg-border-light)' : 'none' }}>
+                      <span className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 500 }}>{row.label}</span>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--dg-text-primary)' }}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary w-100" onClick={() => setSelectedAlert(null)}>Close</button>
+              </div>
             </div>
           </div>
         </div>

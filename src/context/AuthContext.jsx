@@ -33,6 +33,13 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const loginWithToken = useCallback((userData, authToken) => {
+    setToken(authToken);
+    setUser(userData);
+    setAuthToken(authToken);
+    localStorage.setItem('auth_user', JSON.stringify(userData));
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await logoutUser();
@@ -53,7 +60,7 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, loginWithToken, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );

@@ -163,3 +163,20 @@ These 8 events are displayed in a read-only panel and cannot be disabled:
 - RAM Changed, SSD Changed, HDD Changed, CPU Changed
 - Motherboard Changed, BIOS Changed
 - Antivirus Removed, Firewall Disabled
+
+---
+
+## ITAM & AMC Reports UI Module
+
+### Overview
+Integrates executive PDF generation capabilities directly into the system's principal Reports module interface.
+
+### New API Integrations (`reports.js`)
+- `downloadAmcHealthSummaryReport(params)`: Triggers file download for `/reports/amc-health-summary`.
+- `downloadAssetInventoryReport(params)`: Triggers file download for `/reports/asset-inventory`.
+
+### Page Components: ReportsList.jsx
+- **Header Actions**: Added buttons for "Generate AMC Health Summary" and "Generate Asset Inventory" alongside the base report button.
+- **Filter Modals**: Overlay modal dialogs prompting for Customer ID, Machine ID, AMC Plan Override, and Date range boundaries.
+- **Operation States**: Tracks asynchronous generation progress with loading spinners ("Generating PDF..."), success confirmations, and fail-safe alerts.
+

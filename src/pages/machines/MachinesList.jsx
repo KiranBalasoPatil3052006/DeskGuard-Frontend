@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FaServer, 
@@ -6,19 +6,115 @@ import {
   FaMicrochip,
   FaMemory,
   FaEllipsisH,
-  FaSearch
+  FaSearch,
+  FaChevronDown,
+  FaChevronRight,
+  FaWindows,
+  FaLinux,
+  FaApple,
+  FaDesktop,
+  FaClock,
+  FaEllipsisV,
+  FaMinus,
+  FaExclamationTriangle,
+  FaExclamationCircle,
+  FaInfoCircle,
+  FaPlus,
+  FaEye,
+  FaFileAlt,
+  FaExchangeAlt,
+  FaDownload,
+  FaRobot,
+  FaArrowRight,
+  FaTimes
 } from 'react-icons/fa';
 import { useMachines } from '../../hooks/useQueries';
+import SummaryCards from '../../components/dashboard/SummaryCards';
+import './MachinesList.css';
+
+const HealthRing = ({ score }) => {
+  const radius = 14;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+  let strokeColor = '#10B981'; // Green
+  if (score < 50) strokeColor = '#EF4444'; // Red
+  else if (score < 80) strokeColor = '#F97316'; // Orange
+
+  return (
+    <div className="health-ring-wrapper">
+      <svg width="34" height="34">
+        <circle
+          cx="17"
+          cy="17"
+          r={radius}
+          fill="transparent"
+          stroke="#E2E8F0"
+          strokeWidth="2.5"
+        />
+        <circle
+          cx="17"
+          cy="17"
+          r={radius}
+          fill="transparent"
+          stroke={strokeColor}
+          strokeWidth="2.5"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          transform="rotate(-90 17 17)"
+        />
+      </svg>
+      <span className="health-ring-text" style={{ color: strokeColor }}>{score}</span>
+    </div>
+  );
+};
+
+const RadialGauge = ({ value }) => {
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (value / 100) * circumference;
+  return (
+    <div className="radial-gauge-wrapper">
+      <svg width="50" height="50">
+        <circle
+          cx="25"
+          cy="25"
+          r={radius}
+          fill="transparent"
+          stroke="#F1F5F9"
+          strokeWidth="4"
+        />
+        <circle
+          cx="25"
+          cy="25"
+          r={radius}
+          fill="transparent"
+          stroke="#10B981"
+          strokeWidth="4"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          transform="rotate(-90 25 25)"
+        />
+      </svg>
+      <span className="radial-gauge-text">{value}%</span>
+    </div>
+  );
+};
 
 const MachinesList = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('All');
+  const [osFilter, setOsFilter] = useState('All OS');
+  const [sortBy, setSortBy] = useState('Health Score');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 6;
   const [openDropdown, setOpenDropdown] = useState(null);
   const dropdownRef = useRef(null);
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  const quickActionsRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -27,12 +123,15 @@ const MachinesList = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, debouncedSearch]);
+  }, [filter, debouncedSearch, osFilter, sortBy]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpenDropdown(null);
+      }
+      if (quickActionsRef.current && !quickActionsRef.current.contains(event.target)) {
+        setShowQuickActions(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -40,264 +139,470 @@ const MachinesList = () => {
   }, []);
 
   const params = { page: currentPage, per_page: itemsPerPage };
-  if (filter !== 'All') params.status = filter.toLowerCase();
+  if (filter === 'Offline') params.status = 'offline';
+  else if (filter === 'Healthy' || filter === 'Online') params.status = 'online';
   if (debouncedSearch) params.search = debouncedSearch;
 
-  // PERFORMANCE: isFetching = true during background refetch (keepPreviousData keeps old data visible)
-  //              isLoading = true only on initial load (no cached data at all)
-  const { data: machinesData, isLoading: loading, isFetching } = useMachines(params);
-  const machines = machinesData?.data || [];
+  const { data: machinesData, isLoading: loading } = useMachines(params);
+  const dbMachines = machinesData?.data || [];
   const meta = machinesData?.meta || {};
-  const lastPage = meta?.last_page || 1;
-  const summary = {
-    total: meta?.total || machines.length,
-    online: meta?.online_count || 0,
-    offline: meta?.offline_count || 0,
-    critical: meta?.critical_count || 0,
+
+  const calculateHealthScore = (m) => {
+    const cs = m.current_status || {};
+    if (cs.health_score != null) return cs.health_score;
+    let score = 100;
+    const cpu = cs.cpu_percentage ?? 0;
+    const ram = cs.ram_percentage ?? 0;
+    const disk = cs.disk_percentage ?? 0;
+    if (cpu > 90) score -= 30; else if (cpu > 70) score -= 15;
+    if (ram > 90) score -= 25; else if (ram > 70) score -= 10;
+    if (disk > 90) score -= 20; else if (disk > 70) score -= 5;
+    return Math.max(0, Math.min(100, score));
   };
 
-  const summaryCards = [
-    { title: 'Total Machines', value: summary.total, icon: <FaServer />, gradClass: 'grad-teal' },
-    { title: 'Active Machines', value: summary.online, icon: <FaCheckCircle />, gradClass: 'grad-purple' },
-    { title: 'Offline Machines', value: summary.offline, icon: <FaMicrochip />, gradClass: 'grad-orange' },
-    { title: 'Critical Alerts', value: summary.critical, icon: <FaMemory />, gradClass: 'grad-pink' },
-  ];
-
-  const hasExtraData = machines.some(m =>
-    m.current_status?.cpu_percentage != null ||
-    m.current_status?.ram_percentage != null ||
-    m.current_status?.disk_percentage != null ||
-    m.last_heartbeat_at != null
-  );
-
-  const statusBadge = (status) => {
-    switch (status) {
-      case 'Critical': case 'critical': return 'bg-danger';
-      case 'Warning': case 'warning': return 'bg-warning text-dark';
-      case 'Online': case 'online': return 'bg-success';
-      case 'Offline': case 'offline': return 'bg-secondary';
-      default: return 'bg-secondary';
+  const getStatus = (m, score) => {
+    if (!m.is_online) {
+      return 'Offline';
     }
+    if (score < 50) return 'Critical';
+    if (score < 80) return 'Warning';
+    return 'Online';
   };
+
+  const getUserName = (m) => {
+    if (m.assigned_user?.name) return m.assigned_user.name;
+    return m.employee_mobile_number || '—';
+  };
+
+  const formatOs = (os) => {
+    if (!os) return { name: '—', version: '' };
+    let cleanOs = os.replace('Microsoft ', '').replace('Language ', '');
+    if (cleanOs.includes('Windows 11')) {
+      return { name: 'Windows 11', version: cleanOs.replace('Windows 11 ', '') || 'Pro' };
+    }
+    if (cleanOs.includes('Windows 10')) {
+      return { name: 'Windows 10', version: cleanOs.replace('Windows 10 ', '') || 'Pro' };
+    }
+    if (cleanOs.includes('Ubuntu')) {
+      return { name: 'Ubuntu', version: cleanOs.replace('Ubuntu ', '') || 'LTS' };
+    }
+    return { name: cleanOs, version: '' };
+  };
+
+  // Filter DB Machines dynamically
+  const displayMachines = useMemo(() => {
+    let resultList = [...dbMachines];
+
+    if (debouncedSearch) {
+      resultList = resultList.filter(m => 
+        (m.device_name || m.hostname || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        getUserName(m).toLowerCase().includes(debouncedSearch.toLowerCase())
+      );
+    }
+
+    if (osFilter !== 'All OS') {
+      resultList = resultList.filter(m => 
+        (m.operating_system || '').toLowerCase().includes(osFilter.toLowerCase())
+      );
+    }
+
+    if (filter !== 'All') {
+      resultList = resultList.filter((m) => {
+        const score = calculateHealthScore(m);
+        const status = getStatus(m, score);
+        if (filter === 'Healthy') return status === 'Online';
+        return status === filter;
+      });
+    }
+
+    // Apply sorting
+    resultList.sort((a, b) => {
+      const scoreA = calculateHealthScore(a);
+      const scoreB = calculateHealthScore(b);
+      if (sortBy === 'Health Score') return scoreB - scoreA;
+      if (sortBy === 'CPU') return (b.current_status?.cpu_percentage ?? 0) - (a.current_status?.cpu_percentage ?? 0);
+      if (sortBy === 'RAM') return (b.current_status?.ram_percentage ?? 0) - (a.current_status?.ram_percentage ?? 0);
+      return 0;
+    });
+
+    return resultList;
+  }, [dbMachines, debouncedSearch, filter, osFilter, sortBy]);
+
+  const summary = {
+    total: meta?.total ?? dbMachines.length,
+    online: meta?.online_count ?? dbMachines.filter(m => m.is_online).length,
+    offline: meta?.offline_count ?? dbMachines.filter(m => !m.is_online).length,
+    critical: meta?.critical_count ?? dbMachines.filter(m => calculateHealthScore(m) < 50).length,
+  };
+
+  const relativeTime = (dateStr) => {
+    if (!dateStr) return 'Never';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1 min ago';
+    if (diffMins < 60) return `${diffMins} mins ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return date.toLocaleDateString();
+  };
+
+  const getOsIcon = (os) => {
+    const osLower = (os || '').toLowerCase();
+    if (osLower.includes('win')) return <FaWindows style={{ color: '#0078D6' }} />;
+    if (osLower.includes('ubuntu') || osLower.includes('lin')) return <FaLinux style={{ color: '#FCC624' }} />;
+    if (osLower.includes('mac') || osLower.includes('apple')) return <FaApple style={{ color: '#000000' }} />;
+    return <FaDesktop style={{ color: '#64748B' }} />;
+  };
+
+  const getMetricColor = (val) => {
+    if (val >= 90) return 'bar-red';
+    if (val >= 70) return 'bar-orange';
+    return 'bar-green';
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(displayMachines.length / itemsPerPage);
+  const paginatedMachines = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return displayMachines.slice(startIdx, startIdx + itemsPerPage);
+  }, [displayMachines, currentPage]);
 
   return (
-    <div className="container-fluid p-0">
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-        <h3 className="fw-bold mb-0" style={{ color: 'var(--text-body)' }}>Machines Overview</h3>
-        <div className="d-flex align-items-center gap-3">
-          <div className="position-relative">
-              <input 
-                type="text" 
-                className="form-control" 
-                placeholder="Search Computer/IP..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ 
-                  paddingLeft: '35px', 
-                  borderRadius: '20px', 
-                  backgroundColor: 'var(--bg-input)', 
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-body)',
-                  minWidth: '220px'
-                }} 
-              />
-            <FaSearch className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)' }} />
-          </div>
-          <div className="pill-group">
-            {['All', 'Online', 'Offline', 'Critical'].map(f => (
-              <button 
-                key={f}
-                className={`pill-btn ${filter === f ? 'active' : 'text-muted border-0'}`} 
-                style={filter === f ? { backgroundColor: 'var(--primary-blue)', borderColor: 'var(--primary-blue)', color: '#fff' } : { backgroundColor: 'var(--bg-card)' }}
-                onClick={() => setFilter(f)}
-              >
-                {f}
+    <div className="machines-container">
+      <div className="row g-4">
+        {/* Main Column */}
+        <div className="col-12 d-flex flex-column gap-4">
+          
+          {/* Header */}
+          <div className="machines-header-section">
+            <div>
+              <h3 className="machines-header-title">Machines</h3>
+              <p className="machines-header-subtitle">Monitor and manage all your connected computers in real time.</p>
+            </div>
+            <div className="header-actions-group">
+              <button className="add-machine-primary-btn header-btn">
+                <span>+ Add Machine</span>
               </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="row g-4 mb-4">
-        {summaryCards.map((card, idx) => (
-          <div className="col-12 col-md-6 col-xl-3" key={idx}>
-            <div className={`card h-100 border-0 ${card.gradClass}`} style={{ borderRadius: '16px', color: '#fff' }}>
-              <div className="card-body p-4 d-flex flex-column">
-                <div className="d-flex align-items-center mb-4 opacity-75">
-                  <div className="me-2 rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                    {card.icon}
+              
+              <div className="quick-actions-dropdown-wrapper" ref={quickActionsRef}>
+                <button 
+                  className="quick-actions-dropdown-btn" 
+                  onClick={() => setShowQuickActions(!showQuickActions)}
+                >
+                  <span>Quick Actions</span>
+                  <FaChevronDown style={{ fontSize: '0.75rem' }} />
+                </button>
+                
+                {showQuickActions && (
+                  <div className="quick-actions-dropdown-menu">
+                    <button className="quick-dropdown-item" onClick={() => { setFilter('Offline'); setShowQuickActions(false); }}>
+                      <FaEye className="quick-action-icon" />
+                      <span>View Offline Machines</span>
+                    </button>
+                    <button className="quick-dropdown-item" onClick={() => { navigate('/reports'); setShowQuickActions(false); }}>
+                      <FaFileAlt className="quick-action-icon" />
+                      <span>Generate Report</span>
+                    </button>
+                    <button className="quick-dropdown-item" onClick={() => { navigate('/changes'); setShowQuickActions(false); }}>
+                      <FaExchangeAlt className="quick-action-icon" />
+                      <span>Hardware Changes</span>
+                    </button>
+                    <button className="quick-dropdown-item" onClick={() => { alert('Exporting machine list as CSV...'); setShowQuickActions(false); }}>
+                      <FaDownload className="quick-action-icon" />
+                      <span>Export Machine List</span>
+                    </button>
                   </div>
-                  <span style={{ fontSize: '0.9rem' }}>{card.title}</span>
-                </div>
-                <div className="mt-auto d-flex justify-content-between align-items-end">
-                  <h2 className="mb-0 fw-bold">{card.value}</h2>
-                </div>
+                )}
               </div>
             </div>
           </div>
-        ))}
-      </div>
 
-      <div className="card p-4" style={{ borderRadius: '16px', position: 'relative' }}>
-        {/* PERFORMANCE: Subtle loading indicator during refetch (keepPreviousData keeps table visible) */}
-        {isFetching && !loading && (
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: '3px',
-            background: 'linear-gradient(90deg, transparent, var(--primary-blue, #3B82F6), transparent)',
-            animation: 'shimmer 1.5s ease-in-out infinite',
-            backgroundSize: '200% 100%',
-            borderRadius: '16px 16px 0 0',
-            zIndex: 2
-          }} />
-        )}
-        {loading ? (
-          /* PERFORMANCE: Skeleton table instead of blank spinner */
-          <div className="table-responsive">
-            <table className="table table-borderless align-middle mb-0">
-              <thead><tr>
-                {['Computer Name', 'IP Address', 'Operating System', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="text-muted small">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {[1,2,3,4,5].map(i => (
-                  <tr key={i}>
-                    {[1,2,3,4,5].map(j => (
-                      <td key={j}>
-                        <div style={{
-                          height: '14px', borderRadius: '4px', width: `${60 + Math.random() * 30}%`,
-                          background: 'linear-gradient(110deg, var(--bg-card, #f0f0f0) 8%, var(--bg-input, #e8e8e8) 18%, var(--bg-card, #f0f0f0) 33%)',
-                          backgroundSize: '200% 100%', animation: 'shimmer 1.5s ease-in-out infinite'
-                        }} />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <style>{`@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
-          </div>
-        ) : (
-        <div className="table-responsive">
-          <table className="table table-borderless table-admin align-middle mb-0 w-100">
-            <thead>
-              <tr>
-                <th className="ps-2">Computer Name</th>
-                <th>IP Address</th>
-                <th>Operating System</th>
-                <th>Status</th>
-                {hasExtraData && <th>CPU Usage</th>}
-                {hasExtraData && <th>RAM Usage</th>}
-                {hasExtraData && <th>Disk Usage</th>}
-                {hasExtraData && <th>Last Heartbeat</th>}
-                <th className="text-center pe-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {machines.length > 0 ? (
-                machines.map((m, idx) => (
-                  <tr key={m.id || idx}>
-                    <td className="ps-2 text-muted fw-semibold">{m.device_name || m.hostname || m.machine_uid || '—'}</td>
-                    <td className="text-muted">{m.current_status?.network_interfaces?.[0]?.ip_address || m.hostname || '—'}</td>
-                    <td className="text-muted">{m.operating_system || '—'}</td>
-                    <td>
-                      <span className={`badge ${statusBadge(m.status || (m.is_online ? 'Online' : 'Offline'))}`}>
-                        {m.status || (m.is_online ? 'Online' : 'Offline') || 'Unknown'}
-                      </span>
-                    </td>
-                    {hasExtraData && <td className="text-muted">{m.current_status?.cpu_percentage != null ? `${m.current_status.cpu_percentage}%` : '—'}</td>}
-                    {hasExtraData && <td className="text-muted">{m.current_status?.ram_percentage != null ? `${m.current_status.ram_percentage}%` : '—'}</td>}
-                    {hasExtraData && <td className="text-muted">{m.current_status?.disk_percentage != null ? `${m.current_status.disk_percentage}%` : '—'}</td>}
-                    {hasExtraData && <td className="text-muted">{m.last_heartbeat_at ? new Date(m.last_heartbeat_at).toLocaleString() : '—'}</td>}
-                    <td 
-                      className="text-center text-muted fs-5 pe-2 position-relative" 
-                      style={{ cursor: 'pointer' }}
-                      ref={openDropdown === idx ? dropdownRef : null}
-                    >
-                      <div onClick={() => setOpenDropdown(openDropdown === idx ? null : idx)}>
-                        <FaEllipsisH />
-                      </div>
-                      {openDropdown === idx && (
-                        <div 
-                          className="position-absolute mt-2 shadow-lg text-start" 
-                          style={{ 
-                            backgroundColor: 'var(--bg-card)', 
-                            border: '1px solid var(--border-color)', 
-                            borderRadius: '8px', 
-                            zIndex: 50, 
-                            minWidth: '170px', 
-                            overflow: 'hidden',
-                            right: '30px',
-                            top: '50%'
-                          }}
-                        >
-                          <div 
-                            className="px-3 py-2"
-                            onClick={() => {
-                              setOpenDropdown(null);
-                              navigate(`/machines/${m.id}`);
-                            }}
-                            style={{ 
-                              fontSize: '0.85rem', 
-                              color: 'var(--text-body)',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseOver={(e) => { e.target.style.backgroundColor = 'var(--pill-bg-hover)' }}
-                            onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent' }}
-                          >
-                            View Details
-                          </div>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
+          {/* Top 6 Summary Cards */}
+          <SummaryCards data={{ cards: { total_machines: summary.total, online_count: summary.online, offline_count: summary.offline, critical_alerts: summary.critical, hardware_changes_count: 7 } }} />
+
+
+          {/* Main Card */}
+          <div className="card mb-4">
+            {/* Filter and Search Bar */}
+            <div className="card-body border-bottom border-light py-3">
+              <div className="d-flex flex-column flex-xl-row justify-content-between align-items-stretch align-items-xl-center gap-3">
+                {/* Search */}
+                <div className="position-relative" style={{ width: '100%', maxWidth: '280px' }}>
+                  <FaSearch className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)', fontSize: '0.82rem' }} />
+                  <input 
+                    type="text" 
+                    placeholder="Search machines..." 
+                    className="form-control form-control-sm"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ paddingLeft: '32px' }}
+                  />
+                </div>
+
+                {/* Filter Pills */}
+                <div className="pill-group flex-wrap">
+                  <button className={`pill-btn ${filter === 'All' ? 'active' : ''}`} onClick={() => setFilter('All')}>
+                    All <span className="badge bg-secondary bg-opacity-10 text-muted ms-1" style={{ fontSize: '0.65rem' }}>{summary.total}</span>
+                  </button>
+                  <button className={`pill-btn ${filter === 'Healthy' ? 'active' : ''}`} onClick={() => setFilter('Healthy')}>
+                    <span className="status-dot online me-1" />
+                    Healthy <span className="badge bg-success bg-opacity-10 text-success ms-1" style={{ fontSize: '0.65rem' }}>{summary.total - summary.offline - summary.critical}</span>
+                  </button>
+                  <button className={`pill-btn ${filter === 'Warning' ? 'active' : ''}`} onClick={() => setFilter('Warning')}>
+                    <span className="status-dot warning me-1" />
+                    Warning <span className="badge bg-warning bg-opacity-10 text-warning ms-1" style={{ fontSize: '0.65rem' }}>18</span>
+                  </button>
+                  <button className={`pill-btn ${filter === 'Critical' ? 'active' : ''}`} onClick={() => setFilter('Critical')}>
+                    <span className="status-dot offline me-1" />
+                    Critical <span className="badge bg-danger bg-opacity-10 text-danger ms-1" style={{ fontSize: '0.65rem' }}>{summary.critical}</span>
+                  </button>
+                  <button className={`pill-btn ${filter === 'Offline' ? 'active' : ''}`} onClick={() => setFilter('Offline')}>
+                    <span className="status-dot offline me-1" style={{ backgroundColor: 'var(--dg-text-muted)' }} />
+                    Offline <span className="badge bg-secondary bg-opacity-10 text-muted ms-1" style={{ fontSize: '0.65rem' }}>{summary.offline}</span>
+                  </button>
+                </div>
+
+                {/* Dropdowns */}
+                <div className="d-flex align-items-center gap-2">
+                  <select className="form-select form-select-sm" value={osFilter} onChange={(e) => setOsFilter(e.target.value)} style={{ width: '120px' }}>
+                    <option value="All OS">All OS</option>
+                    <option value="Windows">Windows</option>
+                    <option value="Ubuntu">Ubuntu</option>
+                  </select>
+
+                  <select className="form-select form-select-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ width: '160px' }}>
+                    <option value="Health Score">Sort: Health Score</option>
+                    <option value="CPU">Sort: CPU Usage</option>
+                    <option value="RAM">Sort: RAM Usage</option>
+                  </select>
+
+                  <button className="btn btn-outline-secondary btn-sm" style={{ padding: '6px 10px' }}><FaExchangeAlt size={12} /></button>
+                </div>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="card-body p-0">
+              {loading && paginatedMachines.length === 0 ? (
+                <div className="text-center py-5 text-muted">
+                  <div className="spinner-border text-primary" role="status" />
+                  <div className="mt-2 small">Loading monitored machines...</div>
+                </div>
               ) : (
-                <tr>
-                  <td colSpan={hasExtraData ? 9 : 5} className="text-center py-4 text-muted">No machines found</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        )}
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th className="ps-4">Machine / User</th>
+                        <th>OS</th>
+                        <th>Health Score</th>
+                        <th>Status</th>
+                        <th>CPU</th>
+                        <th>RAM</th>
+                        <th>Storage</th>
+                        <th>Last Heartbeat</th>
+                        <th className="pe-4 text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedMachines.length > 0 ? (
+                        paginatedMachines.map((m, idx) => {
+                          const score = calculateHealthScore(m);
+                          const status = getStatus(m, score);
+                          
+                          const cpu = m.current_status?.cpu_percentage ?? null;
+                          const ram = m.current_status?.ram_percentage ?? null;
+                          const disk = m.current_status?.disk_percentage ?? null;
+                          
+                          const osInfo = formatOs(m.operating_system);
 
-        {lastPage > 1 && (
-          <div className="d-flex justify-content-between align-items-center mt-4">
-            <div className="text-muted small">
-              Page {currentPage} of {lastPage}
+                          return (
+                            <tr key={m.id || idx}>
+                              <td className="ps-4">
+                                <div className="d-flex align-items-center gap-2.5">
+                                  <div className="text-muted d-flex align-items-center" style={{ fontSize: '1.25rem' }}>
+                                    {getOsIcon(m.operating_system)}
+                                  </div>
+                                  <div>
+                                    <div className="fw-semibold text-dark" style={{ fontSize: '0.85rem' }}>
+                                      {m.device_name || m.hostname || m.machine_uid || '—'}
+                                    </div>
+                                    <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
+                                      {getUserName(m)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="small">
+                                  <div className="fw-semibold text-dark">{osInfo.name}</div>
+                                  <div className="text-muted" style={{ fontSize: '0.72rem' }}>{osInfo.version}</div>
+                                </div>
+                              </td>
+                              <td>
+                                <HealthRing score={score} />
+                              </td>
+                              <td>
+                                <span className={`badge ${
+                                  status === 'Healthy' ? 'badge-online' : status === 'Critical' ? 'badge-critical' : 'badge-warning'
+                                }`}>
+                                  <span className={`status-dot ${
+                                    status === 'Healthy' ? 'online' : status === 'Critical' ? 'offline' : 'warning'
+                                  }`} />
+                                  {status}
+                                </span>
+                              </td>
+                              <td>
+                                <div style={{ minWidth: '80px' }}>
+                                  <div className="d-flex justify-content-between align-items-center mb-1">
+                                    <span className="small text-muted" style={{ fontSize: '0.72rem' }}>{cpu !== null ? `${cpu}%` : '—'}</span>
+                                  </div>
+                                  {cpu !== null && (
+                                    <div className="progress" style={{ height: '4px' }}>
+                                      <div 
+                                        className={`progress-bar ${cpu > 80 ? 'bg-danger' : cpu > 60 ? 'bg-warning' : 'bg-primary'}`} 
+                                        style={{ width: `${cpu}%` }} 
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ minWidth: '80px' }}>
+                                  <div className="d-flex justify-content-between align-items-center mb-1">
+                                    <span className="small text-muted" style={{ fontSize: '0.72rem' }}>{ram !== null ? `${ram}%` : '—'}</span>
+                                  </div>
+                                  {ram !== null && (
+                                    <div className="progress" style={{ height: '4px' }}>
+                                      <div 
+                                        className={`progress-bar ${ram > 80 ? 'bg-danger' : ram > 60 ? 'bg-warning' : 'bg-primary'}`} 
+                                        style={{ width: `${ram}%` }} 
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ minWidth: '80px' }}>
+                                  <div className="d-flex justify-content-between align-items-center mb-1">
+                                    <span className="small text-muted" style={{ fontSize: '0.72rem' }}>{disk !== null ? `${disk}%` : '—'}</span>
+                                  </div>
+                                  {disk !== null && (
+                                    <div className="progress" style={{ height: '4px' }}>
+                                      <div 
+                                        className={`progress-bar ${disk > 80 ? 'bg-danger' : disk > 60 ? 'bg-warning' : 'bg-primary'}`} 
+                                        style={{ width: `${disk}%` }} 
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <div className="d-flex align-items-center gap-1.5">
+                                  <span className={`status-dot ${status === 'Offline' ? 'offline' : 'online'}`} />
+                                  <span className="small">{relativeTime(m.last_heartbeat_at)}</span>
+                                </div>
+                              </td>
+                              <td className="pe-4 text-end" onClick={e => e.stopPropagation()}>
+                                <div className="d-inline-flex gap-2 align-items-center justify-content-end">
+                                  <button className="action-btn" title="View details" onClick={() => navigate(`/machines/${m.id || idx}`)}>
+                                    <FaDesktop />
+                                  </button>
+                                  <button className="action-btn" title="Inspect Timeline" onClick={() => navigate(`/changes`)}>
+                                    <FaClock />
+                                  </button>
+                                  <div className="position-relative">
+                                    <button className="action-btn" onClick={() => setOpenDropdown(openDropdown === idx ? null : idx)}>
+                                      <FaEllipsisV />
+                                    </button>
+                                    {openDropdown === idx && (
+                                      <div 
+                                        className="dropdown-menu show position-absolute end-0 mt-1 shadow border" 
+                                        style={{ zIndex: 1000, minWidth: '150px' }}
+                                        ref={dropdownRef}
+                                      >
+                                        <button 
+                                          className="dropdown-item fw-semibold py-2" 
+                                          onClick={() => {
+                                            setOpenDropdown(null);
+                                            navigate(`/machines/${m.id}`);
+                                          }}
+                                          style={{ fontSize: '0.8rem' }}
+                                        >
+                                          View Details
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={9} className="text-center py-5 text-muted">
+                            No machines matching your search or filters.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            <div className="d-flex gap-2">
-              <button 
-                className="btn btn-sm btn-outline-secondary" 
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => p - 1)}
-              >
-                Previous
-              </button>
-              {Array.from({ length: lastPage }, (_, i) => i + 1).map(page => (
-                <button 
-                  key={page}
-                  className={`btn btn-sm ${currentPage === page ? 'btn-primary' : 'btn-outline-secondary'}`}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </button>
-              ))}
-              <button 
-                className="btn btn-sm btn-outline-secondary" 
-                disabled={currentPage === lastPage}
-                onClick={() => setCurrentPage(p => p + 1)}
-              >
-                Next
-              </button>
-            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="card-footer bg-transparent border-top border-light d-flex justify-content-between align-items-center py-3">
+                <span className="text-muted small">
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, displayMachines.length)} of {displayMachines.length} machines
+                </span>
+                <div className="dg-pagination">
+                  <button 
+                    className="page-btn"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                  >
+                    &lt;
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button 
+                      key={page}
+                      className={`page-btn ${currentPage === page ? 'active' : ''}`}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button 
+                    className="page-btn"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+
+        </div>
+
       </div>
     </div>
   );
 };
+
+// Heart icon placeholder
+const FaHeartbeatIcon = () => (
+  <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+  </svg>
+);
 
 export default MachinesList;

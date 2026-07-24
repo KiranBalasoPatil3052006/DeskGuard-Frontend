@@ -1,35 +1,62 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FaUserPlus, FaEdit, FaTrash, FaEye, FaToggleOn, FaToggleOff, FaSearch, FaTimes, FaSave, FaSpinner, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { getAccounts, createAccount, updateAccount, deleteAccount, disableAccount, enableAccount, generateEmployeeId } from '../../services/accounts';
+import { FaUserPlus, FaEdit, FaTrash, FaEye, FaToggleOn, FaToggleOff, FaSearch, FaTimes, FaSave, FaSpinner, FaKey, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { getAccounts, createAccount, updateAccount, resetAccountPassword, deleteAccount, disableAccount, enableAccount, generateEmployeeId } from '../../services/accounts';
 
 const AccountsList = () => {
   const [accounts, setAccounts] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [perPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [form, setForm] = useState({ full_name: '', email: '', password: '', confirm_password: '', employee_id: '' });
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
+
+  const [form, setForm] = useState({
+    full_name: '',
+    email: '',
+    mobile_number: '',
+    password: '',
+    confirm_password: '',
+    employee_id: '',
+    role: 'Admin',
+    status: 'active'
+  });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  // Modals
+  const [showFormModal, setShowFormModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewTarget, setViewTarget] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetTarget, setResetTarget] = useState(null);
+  const [resetForm, setResetForm] = useState({ new_password: '', confirm_password: '', must_change_password: true });
+  const [resetting, setResetting] = useState(false);
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, per_page: perPage };
+      const params = {
+        page,
+        per_page: perPage,
+        sort_by: sortBy,
+        sort_order: sortOrder
+      };
       if (search) params.search = search;
+      if (roleFilter !== 'all') params.role = roleFilter;
       if (statusFilter !== 'all') params.status = statusFilter;
+
       const res = await getAccounts(params);
       const d = res.data || res;
       setAccounts(d.data || []);
@@ -40,32 +67,42 @@ const AccountsList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, perPage, search, statusFilter]);
+  }, [page, perPage, search, roleFilter, statusFilter, sortBy, sortOrder]);
 
   useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
   useEffect(() => {
-    if (!isEditing) {
+    if (!isEditing && showFormModal) {
       generateEmployeeId().then(res => {
         const d = res.data || res;
         setForm(prev => ({ ...prev, employee_id: d.employee_id || '' }));
       }).catch(() => {});
     }
-  }, [isEditing]);
+  }, [isEditing, showFormModal]);
 
   const handleFormChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const resetForm = () => {
-    setForm({ full_name: '', email: '', password: '', confirm_password: '', employee_id: '' });
+  const handleResetFormChange = (e) => {
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setResetForm({ ...resetForm, [e.target.name]: value });
+  };
+
+  const clearForm = () => {
+    setForm({
+      full_name: '',
+      email: '',
+      mobile_number: '',
+      password: '',
+      confirm_password: '',
+      employee_id: '',
+      role: 'Admin',
+      status: 'active'
+    });
     setIsEditing(false);
     setEditingId(null);
     setMessage(null);
-    generateEmployeeId().then(res => {
-      const d = res.data || res;
-      setForm(prev => ({ ...prev, employee_id: d.employee_id || '' }));
-    }).catch(() => {});
   };
 
   const handleSubmit = async (e) => {
@@ -74,14 +111,22 @@ const AccountsList = () => {
     setMessage(null);
     try {
       if (isEditing && editingId) {
-        const payload = { full_name: form.full_name, email: form.email, employee_id: form.employee_id };
+        const payload = {
+          full_name: form.full_name,
+          email: form.email,
+          mobile_number: form.mobile_number,
+          employee_id: form.employee_id,
+          role: form.role,
+          status: form.status
+        };
         await updateAccount(editingId, payload);
         setMessage({ type: 'success', text: 'Account updated successfully.' });
       } else {
         await createAccount(form);
         setMessage({ type: 'success', text: 'Account created successfully.' });
       }
-      resetForm();
+      clearForm();
+      setShowFormModal(false);
       if (page !== 1) setPage(1); else fetchAccounts();
     } catch (err) {
       const errData = err?.errors || err?.data?.errors || {};
@@ -92,22 +137,47 @@ const AccountsList = () => {
     }
   };
 
-  const handleEdit = async (account) => {
+  const handleEdit = (account) => {
     setIsEditing(true);
     setEditingId(account.id);
     setForm({
       full_name: account.full_name || '',
       email: account.email || '',
+      mobile_number: account.mobile_number || '',
       password: '',
       confirm_password: '',
       employee_id: account.employee_id || '',
+      role: account.role || 'Admin',
+      status: account.is_active ? 'active' : 'disabled'
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowFormModal(true);
   };
 
   const handleView = (account) => {
     setViewTarget(account);
     setShowViewModal(true);
+  };
+
+  const handleResetPasswordClick = (account) => {
+    setResetTarget(account);
+    setResetForm({ new_password: '', confirm_password: '', must_change_password: true });
+    setShowResetPasswordModal(true);
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    setResetting(true);
+    try {
+      await resetAccountPassword(resetTarget.id, resetForm);
+      setShowResetPasswordModal(false);
+      setResetTarget(null);
+      setMessage({ type: 'success', text: `Password for ${resetTarget.full_name} reset successfully.` });
+    } catch (err) {
+      setMessage({ type: 'danger', text: err?.message || 'Failed to reset password.' });
+    } finally {
+      setResetting(false);
+    }
   };
 
   const handleDeleteClick = (account) => {
@@ -135,8 +205,10 @@ const AccountsList = () => {
     try {
       if (account.is_active) {
         await disableAccount(account.id);
+        setMessage({ type: 'info', text: `Account for ${account.full_name} disabled.` });
       } else {
         await enableAccount(account.id);
+        setMessage({ type: 'success', text: `Account for ${account.full_name} enabled.` });
       }
       fetchAccounts();
     } catch (err) {
@@ -156,14 +228,19 @@ const AccountsList = () => {
     setPage(1);
   };
 
-  const handleFilterChange = (val) => {
-    setStatusFilter(val);
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
     setPage(1);
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const renderSortIcon = (column) => {
+    if (sortBy !== column) return <FaSort className="ms-1 text-muted opacity-50" size={10} />;
+    return sortOrder === 'asc' ? <FaSortUp className="ms-1 text-primary" size={10} /> : <FaSortDown className="ms-1 text-primary" size={10} />;
   };
 
   const formatDateTime = (dateStr) => {
@@ -173,237 +250,480 @@ const AccountsList = () => {
 
   return (
     <div className="container-fluid p-0">
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+      {/* Page Header */}
+      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4 gap-3">
         <div>
-          <h3 className="text-dark-blue fw-bold mb-1">Create Account</h3>
-          <nav aria-label="breadcrumb">
-            <ol className="breadcrumb mb-0 small">
-              <li className="breadcrumb-item"><Link to="/dashboard" className="text-decoration-none">Home</Link></li>
-              <li className="breadcrumb-item active" aria-current="page">Accounts</li>
-            </ol>
-          </nav>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Account Management</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--dg-text-muted)', margin: 0 }}>Create administrator accounts, manage system roles, configure credentials, and inspect logs.</p>
+        </div>
+        <div>
+          <button 
+            className="btn btn-primary d-flex align-items-center gap-2" 
+            onClick={() => { clearForm(); setShowFormModal(true); }}
+            style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+          >
+            <FaUserPlus size={12} />
+            <span>Create Account</span>
+          </button>
         </div>
       </div>
 
       {message && (
-        <div className={`alert alert-${message.type} alert-dismissible fade show d-flex align-items-center`} role="alert">
-          <span className="flex-grow-1">{message.text}</span>
+        <div className={`alert alert-${message.type} alert-dismissible fade show d-flex align-items-center mb-4`} role="alert">
+          <span className="flex-grow-1 fw-semibold small">{message.text}</span>
           <button type="button" className="btn-close" onClick={() => setMessage(null)}></button>
         </div>
       )}
 
-      <div className="row g-4">
-        <div className="col-12 col-xl-5">
-          <div className="card glass-card border-0">
-            <div className="card-header bg-transparent border-bottom border-light fw-bold text-dark-blue py-3 d-flex align-items-center">
-              <FaUserPlus className="text-success me-2" /> {isEditing ? 'Edit Account' : 'Create New Account'}
+      {/* Main Accounts Card */}
+      <div className="card mb-4">
+        <div className="card-body border-bottom border-light">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <h6 className="fw-bold text-dark mb-0 d-flex align-items-center">
+              <span>Registered Accounts</span>
+              <span className="badge bg-primary bg-opacity-10 text-primary ms-2" style={{ fontSize: '0.75rem' }}>{total} Total</span>
+            </h6>
+
+            <div className="d-flex gap-2 flex-wrap align-items-center">
+              {/* Search */}
+              <form onSubmit={handleSearch} className="position-relative" style={{ minWidth: '220px' }}>
+                <FaSearch className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)', fontSize: '0.82rem' }} />
+                <input 
+                  type="text" 
+                  className="form-control form-control-sm" 
+                  placeholder="Search ID, name, email..." 
+                  value={searchInput} 
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  style={{ paddingLeft: '32px' }}
+                />
+                {search && (
+                  <button className="btn btn-link position-absolute text-muted p-0 border-0" type="button" onClick={handleSearchClear} style={{ right: '8px', top: '50%', transform: 'translateY(-50%)' }}><FaTimes size={11} /></button>
+                )}
+              </form>
+
+              {/* Role Select Filter */}
+              <select 
+                className="form-select form-select-sm" 
+                value={roleFilter} 
+                onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+                style={{ width: '130px' }}
+              >
+                <option value="all">All Roles</option>
+                <option value="Super Admin">Super Admin</option>
+                <option value="Admin">Admin</option>
+                <option value="Manager">Manager</option>
+                <option value="Technician">Technician</option>
+              </select>
+
+              {/* Status Select Filter */}
+              <select 
+                className="form-select form-select-sm" 
+                value={statusFilter} 
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                style={{ width: '120px' }}
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="disabled">Disabled</option>
+              </select>
+
+              {/* Items Per Page Picker */}
+              <select 
+                className="form-select form-select-sm" 
+                value={perPage} 
+                onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+                style={{ width: '100px' }}
+              >
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+                <option value={100}>100 / page</option>
+              </select>
             </div>
-            <div className="card-body p-4">
+          </div>
+        </div>
+
+        <div className="card-body p-0">
+          {loading ? (
+            <div className="text-center py-5"><FaSpinner className="text-primary fa-spin" size={32} /></div>
+          ) : accounts.length === 0 ? (
+            <div className="text-center py-5 text-muted">
+              <FaUserPlus size={44} className="mb-3 text-muted opacity-50" />
+              <h6 className="fw-bold text-dark">No Accounts Found</h6>
+              {search || roleFilter !== 'all' || statusFilter !== 'all' ? (
+                <p className="small mb-0">Adjust your search parameters or drop filters.</p>
+              ) : (
+                <p className="small mb-0">Use the Create Account button to register administrators.</p>
+              )}
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ borderCollapse: 'separate', borderSpacing: '0' }}>
+                <thead>
+                  <tr className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F1F5F9' }}>
+                    <th className="ps-4 pb-3 border-0 cursor-pointer" onClick={() => handleSort('employee_id')}>
+                      Employee ID {renderSortIcon('employee_id')}
+                    </th>
+                    <th className="pb-3 border-0 cursor-pointer" onClick={() => handleSort('full_name')}>
+                      Full Name {renderSortIcon('full_name')}
+                    </th>
+                    <th className="pb-3 border-0 cursor-pointer" onClick={() => handleSort('email')}>
+                      Email & Contact {renderSortIcon('email')}
+                    </th>
+                    <th className="pb-3 border-0">Role</th>
+                    <th className="pb-3 border-0 cursor-pointer" onClick={() => handleSort('status')}>
+                      Status {renderSortIcon('status')}
+                    </th>
+                    <th className="pb-3 border-0 cursor-pointer" onClick={() => handleSort('last_login')}>
+                      Last Login {renderSortIcon('last_login')}
+                    </th>
+                    <th className="pe-4 pb-3 border-0 text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accounts.map(acc => (
+                    <tr key={acc.id} style={{ borderBottom: '1px solid #F8FAFC' }}>
+                      <td className="ps-4 py-3">
+                        <code style={{ fontSize: '0.8rem', color: '#6366F1' }}>{acc.employee_id || '—'}</code>
+                      </td>
+                      <td className="py-3 font-semibold text-dark" style={{ fontSize: '0.85rem' }}>
+                        {acc.full_name}
+                      </td>
+                      <td className="py-3" style={{ fontSize: '0.85rem' }}>
+                        <div className="text-dark font-medium">{acc.email}</div>
+                        {acc.mobile_number && (
+                          <div className="text-muted small mt-0.5" style={{ fontSize: '0.75rem' }}>📱 {acc.mobile_number}</div>
+                        )}
+                      </td>
+                      <td className="py-3">
+                        <span 
+                          className="badge px-2.5 py-1 fw-bold" 
+                          style={{ 
+                            fontSize: '0.7rem', 
+                            backgroundColor: 
+                              acc.role === 'Super Admin' ? '#FEE2E2' : 
+                              acc.role === 'Admin' ? '#E0E7FF' : 
+                              acc.role === 'Manager' ? '#FEF3C7' : '#F1F5F9', 
+                            color: 
+                              acc.role === 'Super Admin' ? '#EF4444' : 
+                              acc.role === 'Admin' ? '#4F46E5' : 
+                              acc.role === 'Manager' ? '#D97706' : '#475569', 
+                            borderRadius: '6px' 
+                          }}
+                        >
+                          {acc.role}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <div className="d-flex align-items-center gap-1.5">
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: acc.is_active ? '#10B981' : '#64748B' }} />
+                          <span 
+                            className="fw-bold" 
+                            style={{ 
+                              fontSize: '0.75rem',
+                              color: acc.is_active ? '#10B981' : '#64748B'
+                            }}
+                          >
+                            {acc.is_active ? 'Active' : 'Disabled'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 text-muted" style={{ fontSize: '0.78rem' }}>
+                        {formatDateTime(acc.last_login)}
+                      </td>
+                      <td className="pe-4 py-3 text-end">
+                        <div className="d-flex gap-1.5 justify-content-end">
+                          <button 
+                            className="action-btn" 
+                            title="View details" 
+                            onClick={() => handleView(acc)}
+                          >
+                            <FaEye />
+                          </button>
+                          <button 
+                            className="action-btn" 
+                            title="Edit profile" 
+                            onClick={() => handleEdit(acc)}
+                          >
+                            <FaEdit />
+                          </button>
+                          <button 
+                            className="action-btn" 
+                            title="Reset Password" 
+                            onClick={() => handleResetPasswordClick(acc)}
+                          >
+                            <FaKey />
+                          </button>
+                          <button 
+                            className="action-btn" 
+                            title={acc.is_active ? 'Disable account' : 'Enable account'} 
+                            onClick={() => handleToggleStatus(acc)}
+                          >
+                            {acc.is_active ? <FaToggleOff /> : <FaToggleOn />}
+                          </button>
+                          <button 
+                            className="action-btn danger" 
+                            title="Delete account" 
+                            onClick={() => handleDeleteClick(acc)}
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="card-footer bg-transparent border-top border-light d-flex flex-column flex-sm-row justify-content-between align-items-center py-3 gap-2">
+            <span className="text-muted small" style={{ fontSize: '0.78rem' }}>
+              Showing {(page - 1) * perPage + 1} to {Math.min(page * perPage, total)} of {total} accounts
+            </span>
+            <div className="dg-pagination">
+              <button 
+                className="page-btn"
+                disabled={page <= 1} 
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                &lt;
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button 
+                  key={p} 
+                  className={`page-btn ${p === page ? 'active' : ''}`}
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </button>
+              ))}
+              <button 
+                className="page-btn"
+                disabled={page >= totalPages} 
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                &gt;
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Form Dialog Modal (Create / Edit Form) */}
+      {showFormModal && (
+        <div className="modal d-block" onClick={() => { setShowFormModal(false); clearForm(); }}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{isEditing ? 'Edit Account Details' : 'Create New Account'}</h5>
+                <button type="button" className="btn-close" onClick={() => { setShowFormModal(false); clearForm(); }} />
+              </div>
               <form onSubmit={handleSubmit}>
-                <div className="row g-3 mb-4">
-                  <div className="col-12">
-                    <label className="form-label text-muted small fw-semibold">Full Name <span className="text-danger">*</span></label>
-                    <input type="text" className="form-control" name="full_name" value={form.full_name} onChange={handleFormChange} placeholder="Enter full name" required />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label text-muted small fw-semibold">Email Address <span className="text-danger">*</span></label>
-                    <input type="email" className="form-control" name="email" value={form.email} onChange={handleFormChange} placeholder="Enter email address" required />
-                  </div>
-                  {!isEditing && (
-                    <>
-                      <div className="col-md-6">
-                        <label className="form-label text-muted small fw-semibold">Password <span className="text-danger">*</span></label>
-                        <input type="password" className="form-control" name="password" value={form.password} onChange={handleFormChange} placeholder="Min 6 characters" required={!isEditing} minLength={6} />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label text-muted small fw-semibold">Confirm Password <span className="text-danger">*</span></label>
-                        <input type="password" className="form-control" name="confirm_password" value={form.confirm_password} onChange={handleFormChange} placeholder="Confirm password" required={!isEditing} />
-                      </div>
-                    </>
-                  )}
-                  <div className="col-12">
-                    <label className="form-label text-muted small fw-semibold">Employee ID <span className="text-danger">*</span></label>
-                    <div className="input-group">
-                      <input type="text" className="form-control" name="employee_id" value={form.employee_id} onChange={handleFormChange} placeholder="EMP-0001" required />
-                      <button type="button" className="btn btn-outline-secondary" onClick={() => generateEmployeeId().then(res => { const d = res.data || res; setForm(prev => ({ ...prev, employee_id: d.employee_id || '' })); })} title="Generate new ID">
-                        <FaSpinner className={saving ? 'fa-spin' : ''} />
-                      </button>
+                <div className="modal-body">
+                  <div className="d-flex flex-column gap-3">
+                    <div>
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>Full Name <span className="text-danger">*</span></label>
+                      <input type="text" className="form-control" name="full_name" value={form.full_name} onChange={handleFormChange} placeholder="e.g. John Doe" required />
                     </div>
-                    <div className="form-text">Auto-generated. You can edit if needed.</div>
+                    <div>
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>Email Address <span className="text-danger">*</span></label>
+                      <input type="email" className="form-control" name="email" value={form.email} onChange={handleFormChange} placeholder="e.g. john.doe@deskguard.com" required />
+                    </div>
+                    <div>
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>Mobile Number</label>
+                      <input type="text" className="form-control" name="mobile_number" value={form.mobile_number} onChange={handleFormChange} placeholder="e.g. +919876543210" />
+                    </div>
+
+                    {!isEditing && (
+                      <>
+                        <div>
+                          <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>Password <span className="text-danger">*</span></label>
+                          <input type="password" className="form-control" name="password" value={form.password} onChange={handleFormChange} placeholder="Min. 6 characters" required={!isEditing} minLength={6} />
+                        </div>
+                        <div>
+                          <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>Confirm Password <span className="text-danger">*</span></label>
+                          <input type="password" className="form-control" name="confirm_password" value={form.confirm_password} onChange={handleFormChange} placeholder="Confirm password" required={!isEditing} />
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>Employee ID <span className="text-danger">*</span></label>
+                      <div className="input-group">
+                        <input type="text" className="form-control" name="employee_id" value={form.employee_id} onChange={handleFormChange} placeholder="EMP-000001" required />
+                        <button 
+                          type="button" 
+                          className="btn btn-outline-secondary d-flex align-items-center justify-content-center" 
+                          onClick={() => generateEmployeeId().then(res => { const d = res.data || res; setForm(prev => ({ ...prev, employee_id: d.employee_id || '' })); })} 
+                          title="Auto-Generate Sequential ID"
+                        >
+                          <FaSpinner className={saving ? 'spin-icon' : ''} />
+                        </button>
+                      </div>
+                      <div className="form-text small text-muted mt-1" style={{ fontSize: '0.72rem' }}>Sequential zero-padded format (e.g. EMP-000001). Editable before saving.</div>
+                    </div>
+
+                    <div>
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>Account Role <span className="text-danger">*</span></label>
+                      <select className="form-select" name="role" value={form.role} onChange={handleFormChange} required>
+                        <option value="Super Admin">Super Admin</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Technician">Technician</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>Account Status</label>
+                      <select className="form-select" name="status" value={form.status} onChange={handleFormChange}>
+                        <option value="active">Active</option>
+                        <option value="disabled">Disabled</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
-                <div className="d-flex gap-2 justify-content-end">
-                  {isEditing && (
-                    <button type="button" className="btn btn-outline-secondary d-flex align-items-center" onClick={resetForm}>
-                      <FaTimes className="me-2" /> Cancel
-                    </button>
-                  )}
-                  <button type="submit" className="btn btn-success d-flex align-items-center" disabled={saving}>
-                    {saving ? <FaSpinner className="fa-spin me-2" /> : <FaSave className="me-2" />} {isEditing ? 'Update Account' : 'Create Account'}
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => { setShowFormModal(false); clearForm(); }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary d-flex align-items-center gap-1.5" disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Account'}
                   </button>
-                  {!isEditing && (
-                    <button type="button" className="btn btn-outline-secondary d-flex align-items-center" onClick={resetForm}>
-                      <FaTimes className="me-2" /> Reset Form
-                    </button>
-                  )}
                 </div>
               </form>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="col-12 col-xl-7">
-          <div className="card glass-card border-0">
-            <div className="card-header bg-transparent border-bottom border-light py-3">
-              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                <h6 className="fw-bold text-dark-blue mb-0 d-flex align-items-center">
-                  Administrator Accounts <span className="badge bg-primary bg-opacity-10 text-primary ms-2 rounded-pill">{total}</span>
-                </h6>
-                <div className="d-flex gap-2 flex-wrap">
-                  <form onSubmit={handleSearch} className="d-flex" style={{ maxWidth: '220px' }}>
-                    <div className="input-group input-group-sm">
-                      <input type="text" className="form-control" placeholder="Search name, email, ID..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
-                      {search && (
-                        <button className="btn btn-outline-secondary" type="button" onClick={handleSearchClear}><FaTimes /></button>
-                      )}
-                      <button className="btn btn-primary" type="submit"><FaSearch /></button>
-                    </div>
-                  </form>
-                  <div className="btn-group btn-group-sm">
-                    {['all', 'active', 'disabled'].map(f => (
-                      <button key={f} className={`btn ${statusFilter === f ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => handleFilterChange(f)}>
-                        {f === 'all' ? 'All' : f === 'active' ? 'Active' : 'Disabled'}
-                      </button>
-                    ))}
+      {/* Reset Password Modal */}
+      {showResetPasswordModal && resetTarget && (
+        <div className="modal d-block" onClick={() => !resetting && setShowResetPasswordModal(false)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Reset Account Password</h5>
+                <button type="button" className="btn-close" onClick={() => setShowResetPasswordModal(false)} disabled={resetting} />
+              </div>
+              <form onSubmit={handleResetPasswordSubmit}>
+                <div className="modal-body">
+                  <p className="small text-muted mb-3">
+                    Resetting password for <strong>{resetTarget.full_name}</strong> ({resetTarget.employee_id || resetTarget.email}).
+                  </p>
+
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>New Password <span className="text-danger">*</span></label>
+                    <input 
+                      type="password" 
+                      className="form-control" 
+                      name="new_password" 
+                      value={resetForm.new_password} 
+                      onChange={handleResetFormChange} 
+                      placeholder="Min 6 characters" 
+                      required 
+                      minLength={6} 
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold" style={{ fontSize: '0.82rem' }}>Confirm Password <span className="text-danger">*</span></label>
+                    <input 
+                      type="password" 
+                      className="form-control" 
+                      name="confirm_password" 
+                      value={resetForm.confirm_password} 
+                      onChange={handleResetFormChange} 
+                      placeholder="Confirm new password" 
+                      required 
+                    />
+                  </div>
+
+                  <div className="form-check mb-2">
+                    <input 
+                      type="checkbox" 
+                      className="form-check-input" 
+                      id="mustChangePassCheck" 
+                      name="must_change_password" 
+                      checked={resetForm.must_change_password} 
+                      onChange={handleResetFormChange} 
+                    />
+                    <label className="form-check-label small text-muted" htmlFor="mustChangePassCheck">
+                      Enforce password change on user's next login
+                    </label>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div className="card-body p-0">
-              {loading ? (
-                <div className="text-center py-5"><FaSpinner className="text-primary fa-spin" size={32} /></div>
-              ) : accounts.length === 0 ? (
-                <div className="text-center py-5 text-muted">
-                  <FaUserPlus size={48} className="mb-3 text-muted opacity-50" />
-                  <p className="mb-0">No administrator accounts found.</p>
-                  {search || statusFilter !== 'all' ? <p className="small">Try adjusting your search or filters.</p> : <p className="small">Create your first account using the form.</p>}
-                </div>
-              ) : (
-                <div className="table-responsive">
-                  <table className="table table-hover align-middle mb-0">
-                    <thead className="table-light small">
-                      <tr>
-                        <th className="ps-4">Employee ID</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Last Login</th>
-                        <th className="pe-4 text-end">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {accounts.map(acc => (
-                        <tr key={acc.id}>
-                          <td className="ps-4 fw-medium"><code>{acc.employee_id}</code></td>
-                          <td className="fw-medium">{acc.full_name}</td>
-                          <td className="small text-muted">{acc.email}</td>
-                          <td><span className="badge bg-info bg-opacity-10 text-info border border-info">{acc.role}</span></td>
-                          <td>
-                            <span className={`badge rounded-pill ${acc.is_active ? 'bg-success bg-opacity-10 text-success border border-success' : 'bg-secondary bg-opacity-10 text-secondary border border-secondary'}`}>
-                              {acc.is_active ? 'Active' : 'Disabled'}
-                            </span>
-                          </td>
-                          <td className="small text-muted">{formatDate(acc.created_at)}</td>
-                          <td className="small text-muted">{formatDateTime(acc.last_login)}</td>
-                          <td className="pe-4 text-end">
-                            <div className="d-flex gap-1 justify-content-end">
-                              <button className="btn btn-sm btn-outline-info" title="View" onClick={() => handleView(acc)}><FaEye /></button>
-                              <button className="btn btn-sm btn-outline-primary" title="Edit" onClick={() => handleEdit(acc)}><FaEdit /></button>
-                              <button className={`btn btn-sm ${acc.is_active ? 'btn-outline-warning' : 'btn-outline-success'}`} title={acc.is_active ? 'Disable' : 'Enable'} onClick={() => handleToggleStatus(acc)}>
-                                {acc.is_active ? <FaToggleOff /> : <FaToggleOn />}
-                              </button>
-                              <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteClick(acc)}><FaTrash /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            {totalPages > 1 && (
-              <div className="card-footer bg-transparent border-top border-light d-flex justify-content-between align-items-center py-3">
-                <small className="text-muted">Showing {(page - 1) * perPage + 1}-{Math.min(page * perPage, total)} of {total}</small>
-                <div className="d-flex gap-1">
-                  <button className="btn btn-sm btn-outline-secondary" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
-                    <FaChevronLeft />
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                    <button key={p} className={`btn btn-sm ${p === page ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setPage(p)}>{p}</button>
-                  ))}
-                  <button className="btn btn-sm btn-outline-secondary" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
-                    <FaChevronRight />
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setShowResetPasswordModal(false)} disabled={resetting}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={resetting}>
+                    {resetting ? 'Resetting...' : 'Reset Password'}
                   </button>
                 </div>
-              </div>
-            )}
+              </form>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
+      {/* View Detail Modal Overlay */}
       {showViewModal && viewTarget && (
-        <div className="modal d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
+        <div className="modal d-block" onClick={() => setShowViewModal(false)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
             <div className="modal-content">
-              <div className="modal-header border-bottom border-light">
-                <h6 className="modal-title fw-bold">Account Details</h6>
-                <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
+              <div className="modal-header">
+                <h5 className="modal-title">Account Details</h5>
+                <button type="button" className="btn-close" onClick={() => setShowViewModal(false)} />
               </div>
               <div className="modal-body">
-                <dl className="row mb-0">
-                  <dt className="col-sm-4 text-muted small">Employee ID</dt>
-                  <dd className="col-sm-8"><code>{viewTarget.employee_id}</code></dd>
-                  <dt className="col-sm-4 text-muted small">Full Name</dt>
-                  <dd className="col-sm-8 fw-medium">{viewTarget.full_name}</dd>
-                  <dt className="col-sm-4 text-muted small">Email</dt>
-                  <dd className="col-sm-8">{viewTarget.email}</dd>
-                  <dt className="col-sm-4 text-muted small">Role</dt>
-                  <dd className="col-sm-8"><span className="badge bg-info bg-opacity-10 text-info">{viewTarget.role}</span></dd>
-                  <dt className="col-sm-4 text-muted small">Status</dt>
-                  <dd className="col-sm-8"><span className={`badge rounded-pill ${viewTarget.is_active ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'}`}>{viewTarget.is_active ? 'Active' : 'Disabled'}</span></dd>
-                  <dt className="col-sm-4 text-muted small">Created</dt>
-                  <dd className="col-sm-8">{formatDateTime(viewTarget.created_at)}</dd>
-                  <dt className="col-sm-4 text-muted small">Last Login</dt>
-                  <dd className="col-sm-8">{formatDateTime(viewTarget.last_login)}</dd>
-                  <dt className="col-sm-4 text-muted small">Created By</dt>
-                  <dd className="col-sm-8">{viewTarget.created_by || '—'}</dd>
-                </dl>
+                <div className="d-flex flex-column gap-3">
+                  {[
+                    { label: 'Employee ID', value: <code className="font-mono text-primary fw-bold" style={{ fontSize: '0.8rem' }}>{viewTarget.employee_id || '—'}</code> },
+                    { label: 'Full Name', value: viewTarget.full_name },
+                    { label: 'Email Address', value: viewTarget.email },
+                    { label: 'Mobile Number', value: viewTarget.mobile_number || '—' },
+                    { label: 'Account Role', value: <span className="badge bg-primary bg-opacity-10 text-primary fw-bold" style={{ fontSize: '0.7rem' }}>{viewTarget.role}</span> },
+                    { label: 'Status', value: <span className={`badge ${viewTarget.is_active ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary'} fw-bold`} style={{ fontSize: '0.7rem' }}>{viewTarget.is_active ? 'Active' : 'Disabled'}</span> },
+                    { label: 'Created At', value: formatDateTime(viewTarget.created_at) },
+                    { label: 'Last Login', value: formatDateTime(viewTarget.last_login) },
+                    { label: 'Created By', value: viewTarget.created_by || 'System Admin' },
+                  ].map((row, idx) => (
+                    <div key={idx} className="d-flex justify-content-between align-items-center py-1" style={{ borderBottom: idx < 8 ? '1px solid var(--dg-border-light)' : 'none' }}>
+                      <span className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 500 }}>{row.label}</span>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--dg-text-primary)' }}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="modal-footer border-top border-light">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowViewModal(false)}>Close</button>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary w-100" onClick={() => setShowViewModal(false)}>Close</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Delete Confirmation Modal Overlay */}
       {showDeleteModal && deleteTarget && (
-        <div className="modal d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered modal-sm">
+        <div className="modal d-block" onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()} style={{ maxWidth: '380px' }}>
             <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Delete Account</h5>
+                <button type="button" className="btn-close" onClick={() => { setShowDeleteModal(false); setDeleteTarget(null); }} disabled={deleting} />
+              </div>
               <div className="modal-body text-center py-4">
-                <FaTrash size={36} className="text-danger mb-3" />
-                <h6 className="fw-bold mb-2">Are you sure?</h6>
-                <p className="small text-muted mb-3">You are about to delete the account for <strong>{deleteTarget.full_name}</strong> ({deleteTarget.employee_id}). This action cannot be undone.</p>
-                <div className="d-flex gap-2 justify-content-center">
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => { setShowDeleteModal(false); setDeleteTarget(null); }}>Cancel</button>
-                  <button type="button" className="btn btn-danger d-flex align-items-center" disabled={deleting} onClick={handleDeleteConfirm}>
-                    {deleting ? <FaSpinner className="fa-spin me-2" /> : <FaTrash className="me-2" />} Delete
-                  </button>
-                </div>
+                <FaTrash size={32} className="text-danger mb-3" />
+                <h6 className="fw-bold mb-2">Delete this user account?</h6>
+                <p className="text-muted small mb-0 px-2">
+                  Are you sure you want to soft-delete the account for <strong>{deleteTarget.full_name}</strong> ({deleteTarget.employee_id || deleteTarget.email})?
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => { setShowDeleteModal(false); setDeleteTarget(null); }} disabled={deleting}>Cancel</button>
+                <button type="button" className="btn btn-danger" disabled={deleting} onClick={handleDeleteConfirm}>
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
               </div>
             </div>
           </div>

@@ -1,44 +1,64 @@
 import { memo } from 'react';
 import { FaPlug, FaPowerOff, FaFileAlt, FaLaptopMedical, FaSignInAlt } from 'react-icons/fa';
 
-const RecentActivities = memo(({ activities: propActivities, loading }) => {
-  const defaultActivities = [
-    { type: 'Machine Connected', detail: 'SRV-DB-01 came online.', time: '2 mins ago', icon: <FaPlug />, color: 'success' },
-    { type: 'User Login', detail: 'Admin User logged in.', time: '15 mins ago', icon: <FaSignInAlt />, color: 'primary' },
-    { type: 'Machine Disconnected', detail: 'WKST-DEV-44 went offline unexpectedly.', time: '1 hour ago', icon: <FaPowerOff />, color: 'danger' },
-    { type: 'Report Generated', detail: 'Weekly usage report was generated.', time: '3 hours ago', icon: <FaFileAlt />, color: 'info' },
-    { type: 'New Machine Added', detail: 'SRV-APP-03 registered to the network.', time: '1 day ago', icon: <FaLaptopMedical />, color: 'secondary' },
-  ];
-  const activities = propActivities || defaultActivities;
+const iconColorMap = {
+  success: { bg: 'var(--dg-success-light)', color: 'var(--dg-success)' },
+  primary: { bg: 'var(--dg-primary-light)', color: 'var(--dg-primary)' },
+  danger: { bg: 'var(--dg-danger-light)', color: 'var(--dg-danger)' },
+  info: { bg: 'var(--dg-info-light)', color: 'var(--dg-info)' },
+  secondary: { bg: 'var(--dg-gray-100)', color: 'var(--dg-gray-500)' },
+  warning: { bg: 'var(--dg-warning-light)', color: 'var(--dg-warning)' },
+};
 
-  return (
-    <div className="card h-100">
-      <div className="card-header">
-        Recent Activities
-      </div>
-      <div className="card-body p-0">
-        <ul className="list-group list-group-flush">
-          {activities.map((activity, index) => (
-            <li className="list-group-item px-4 py-3" key={index}>
-              <div className="d-flex align-items-center">
-                <div 
-                  className={`bg-${activity.color} bg-opacity-10 text-${activity.color} rounded p-2 me-3`}
-                  style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  {activity.icon}
+const RecentActivities = memo(({ activities: propActivities, loading, hideCardWrap = false }) => {
+  const activities = Array.isArray(propActivities) ? propActivities : [];
+
+  const listContent = (
+    <div>
+      {activities.length > 0 ? (
+        activities.map((activity, index) => {
+          const iconStyle = iconColorMap[activity.color] || iconColorMap.secondary;
+          return (
+            <div key={index} className="d-flex align-items-center py-3"
+              style={{ borderBottom: index < activities.length - 1 ? '1px solid var(--dg-border-light)' : 'none' }}>
+              <div style={{
+                width: '34px', height: '34px', borderRadius: 'var(--dg-radius-sm)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: iconStyle.bg, color: iconStyle.color,
+                fontSize: '0.85rem', flexShrink: 0, marginRight: '12px'
+              }}>
+                {activity.icon}
+              </div>
+              <div className="flex-grow-1 min-w-0">
+                <div className="text-truncate" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--dg-text-primary)' }}>
+                  {activity.type}
                 </div>
-                <div className="flex-grow-1">
-                  <h6 className="mb-1 text-dark fw-semibold" style={{ fontSize: '0.95rem' }}>{activity.type}</h6>
-                  <p className="mb-0 text-muted" style={{ fontSize: '0.85rem' }}>{activity.detail}</p>
-                </div>
-                <div className="text-muted small">
-                  {activity.time}
+                <div className="text-truncate" style={{ fontSize: '0.72rem', color: 'var(--dg-text-muted)' }}>
+                  {activity.detail}
                 </div>
               </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+              <div className="ms-2 flex-shrink-0" style={{ fontSize: '0.68rem', color: 'var(--dg-gray-400)' }}>
+                {activity.time}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="text-center py-4 text-muted" style={{ fontSize: '0.82rem' }}>
+          No recent activities recorded
+        </div>
+      )}
+    </div>
+  );
+
+  if (hideCardWrap) return listContent;
+
+  return (
+    <div className="card h-100" style={{ padding: '20px' }}>
+      <h6 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--dg-text-primary)', marginBottom: '4px' }}>
+        Recent Activities
+      </h6>
+      {listContent}
     </div>
   );
 });

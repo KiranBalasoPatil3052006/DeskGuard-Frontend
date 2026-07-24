@@ -10,8 +10,9 @@ import {
   FaLayerGroup, FaServer,
   FaMobile, FaTablet, FaPrint, FaWifi, FaMicrophone, FaHeadphones,
   FaCamera, FaKeyboard, FaMouse, FaDatabase,
-  FaCheckCircle
+  FaCheckCircle, FaFilePdf
 } from 'react-icons/fa';
+import MachineReportModal from '../../components/MachineReportModal';
 import { Line } from 'react-chartjs-2';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -176,33 +177,40 @@ const OverviewSection = memo(({ machine, status, id }) => {
   return (
     <div className="row g-4">
       <div className="col-12 col-xl-4">
-        <div className="card h-100 p-4" style={{ borderRadius: '16px' }}>
-          <h5 className="fw-bold mb-4" style={{ color: 'var(--text-body)' }}>System Overview</h5>
+        <div className="card h-100 p-4">
+          <h6 className="fw-bold mb-3" style={{ color: 'var(--dg-text-primary)' }}>System Overview</h6>
           <div className="d-flex justify-content-center mb-4">
-            <div className="d-flex flex-column align-items-center justify-content-center position-relative" style={{ width: '140px', height: '140px' }}>
-              <svg width="140" height="140" className="position-absolute" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="70" cy="70" r={radius} stroke="var(--border-color)" strokeWidth="12" fill="none" opacity="0.3" />
-                <circle cx="70" cy="70" r={radius} stroke={color} strokeWidth="12" fill="none" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} />
+            <div className="d-flex flex-column align-items-center justify-content-center position-relative" style={{ width: '130px', height: '130px' }}>
+              <svg width="130" height="130" className="position-absolute" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="65" cy="65" r={radius} stroke="var(--dg-border)" strokeWidth="10" fill="none" opacity="0.3" />
+                <circle cx="65" cy="65" r={radius} stroke={color} strokeWidth="10" fill="none" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} />
               </svg>
               <div className="text-center position-absolute" style={{ top: '50%', transform: 'translateY(-50%)' }}>
-                <h2 className="mb-0 fw-bold" style={{ color: 'var(--text-body)' }}>{healthScore}</h2>
-                <span className="small text-muted fw-semibold">{getHealthLabel(healthScore)}</span>
+                <h3 className="mb-0 fw-bold" style={{ color: 'var(--dg-text-primary)' }}>{healthScore}</h3>
+                <span className="text-muted fw-semibold" style={{ fontSize: '0.7rem' }}>{getHealthLabel(healthScore)}</span>
               </div>
             </div>
           </div>
-          <div className="d-flex flex-column gap-3">
-            <div><span className="text-muted small">Computer Name:</span> <div className="fw-semibold">{machine?.device_name || machine?.hostname || machine?.machine_uid || id}</div></div>
-            <div><span className="text-muted small">Employee Mobile:</span> <div className="fw-semibold">{machine?.employee_mobile_number || '—'}</div></div>
-            <div><span className="text-muted small">Operating System:</span> <div className="fw-semibold">{machine?.operating_system || '—'}</div></div>
-            <div><span className="text-muted small">OS Version:</span> <div className="fw-semibold">{machine?.os_version || '—'}</div></div>
-            <div><span className="text-muted small">Status:</span><div><span className={`badge ${machine?.is_online ? 'bg-success' : 'bg-secondary'}`}>{machine?.is_online ? 'Online' : 'Offline'}</span></div></div>
-            <div><span className="text-muted small">Last Active:</span> <div className="fw-semibold">{machine?.last_heartbeat_at ? new Date(machine.last_heartbeat_at).toLocaleString() : '—'}</div></div>
-            <div><span className="text-muted small">Company:</span> <div className="fw-semibold">{machine?.company?.name || '—'}</div></div>
+          <div className="d-flex flex-column gap-2">
+            {[
+              { label: 'Computer Name', value: machine?.device_name || machine?.hostname || machine?.machine_uid || id },
+              { label: 'Employee Mobile', value: machine?.employee_mobile_number || '—' },
+              { label: 'Operating System', value: machine?.operating_system || '—' },
+              { label: 'OS Version', value: machine?.os_version || '—' },
+              { label: 'Status', value: <span className={`badge ${machine?.is_online ? 'badge-online' : 'badge-offline'}`}>{machine?.is_online ? 'Online' : 'Offline'}</span> },
+              { label: 'Last Active', value: machine?.last_heartbeat_at ? new Date(machine.last_heartbeat_at).toLocaleString() : '—' },
+              { label: 'Company', value: machine?.company?.name || '—' },
+            ].map((row, index) => (
+              <div key={index} className="d-flex justify-content-between align-items-center py-2" style={{ borderBottom: index < 6 ? '1px solid var(--dg-border-light)' : 'none' }}>
+                <span className="text-muted" style={{ fontSize: '0.76rem', fontWeight: 500 }}>{row.label}</span>
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--dg-text-primary)', textAlign: 'right', maxWidth: '65%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={typeof row.value === 'string' ? row.value : ''}>{row.value}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
       <div className="col-12 col-xl-8">
-        <h5 className="fw-bold mb-3" style={{ color: 'var(--text-body)' }}>Current Health</h5>
+        <h6 className="fw-bold mb-3" style={{ color: 'var(--dg-text-primary)' }}>Current Health</h6>
         <div className="row g-3 mb-4">
           {[
             { icon: <FaMicrochip className="text-primary"/>, title: 'CPU Usage', value: (cs.cpu_percentage ?? cs.cpu_usage) != null ? `${cs.cpu_percentage ?? cs.cpu_usage}%` : '—' },
@@ -222,27 +230,29 @@ const OverviewSection = memo(({ machine, status, id }) => {
             { icon: <FaSyncAlt className="text-warning"/>, title: 'Pending Updates', value: cs.pending_updates != null ? String(cs.pending_updates) : '—' },
           ].map((item, idx) => (
             <div className="col-6 col-md-4 col-xl-4" key={idx}>
-              <div className="card p-3 h-100 border-0" style={{ backgroundColor: 'var(--bg-input)', borderRadius: '12px' }}>
-                <div className="d-flex align-items-center mb-2 fs-5">{item.icon}</div>
-                <div className="text-muted small fw-semibold">{item.title}</div>
-                <div className="fw-bold fs-5">{item.value}</div>
+              <div className="card p-3 h-100">
+                <div className="d-flex align-items-center mb-1 text-secondary" style={{ fontSize: '0.85rem' }}>{item.icon}</div>
+                <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{item.title}</div>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--dg-text-primary)' }}>{item.value}</div>
               </div>
             </div>
           ))}
         </div>
-        <h5 className="fw-bold mb-3" style={{ color: 'var(--text-body)' }}>Recent Activity</h5>
+        <h6 className="fw-bold mb-3" style={{ color: 'var(--dg-text-primary)' }}>Recent Activity</h6>
         <div className="row g-3">
           {[
             { icon: <FaUser className="text-info"/>, title: 'Current User', value: cs.current_user || machine?.current_user || '—' },
             { icon: <FaClock className="text-warning"/>, title: 'Last Communication', value: machine?.last_heartbeat_at ? new Date(machine.last_heartbeat_at).toLocaleString() : '—' },
           ].map((item, idx) => (
             <div className="col-12 col-md-6" key={idx}>
-              <div className="card p-3 border-0" style={{ backgroundColor: 'var(--bg-input)', borderRadius: '12px' }}>
-                <div className="d-flex align-items-center gap-2">
-                  {item.icon}
+              <div className="card p-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', borderRadius: '6px', background: 'var(--dg-gray-100)', color: 'var(--dg-text-secondary)', fontSize: '0.85rem' }}>
+                    {item.icon}
+                  </div>
                   <div>
-                    <div className="text-muted small">{item.title}</div>
-                    <div className="fw-semibold">{item.value}</div>
+                    <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{item.title}</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--dg-text-primary)' }}>{item.value}</div>
                   </div>
                 </div>
               </div>
@@ -283,6 +293,7 @@ const MachineDetails = () => {
   const [devicePage, setDevicePage] = useState(1);
   const [deviceFilter, setDeviceFilter] = useState('all');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [showReportModal, setShowReportModal] = useState(false);
   const PER_PAGE = 50;
 
   const { data: machine, isLoading, error } = useMachine(id);
@@ -872,13 +883,23 @@ const MachineDetails = () => {
             <FaArrowLeft className="me-1" /> Back
           </button>
           <div>
-            <h4 className="fw-bold mb-0" style={{ color: 'var(--text-body)' }}>{machine.device_name || machine.hostname || `Machine ${machine.id}`}</h4>
+            <h4 className="fw-bold mb-0" style={{ color: 'var(--dg-text-primary)', fontSize: '1.25rem' }}>{machine.device_name || machine.hostname || `Machine ${machine.id}`}</h4>
             <span className="text-muted small">{machine.operating_system || '—'} · {machine.hostname || '—'}</span>
           </div>
         </div>
-        <span className={`badge fs-6 px-3 py-2 ${machine.is_online ? 'bg-success' : 'bg-secondary'}`}>
-          {machine.is_online ? '● Online' : '○ Offline'}
-        </span>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 px-3 py-1.5"
+            onClick={() => setShowReportModal(true)}
+            style={{ fontWeight: 600, borderRadius: '6px' }}
+          >
+            <FaFilePdf size={13} />
+            Generate Report
+          </button>
+          <span className={`badge px-2.5 py-1 ${machine.is_online ? 'badge-online' : 'badge-offline'}`}>
+            {machine.is_online ? 'Online' : 'Offline'}
+          </span>
+        </div>
       </div>
 
       <ul className="nav nav-tabs mb-4 flex-nowrap overflow-auto" style={{ gap: '4px' }}>
@@ -887,7 +908,16 @@ const MachineDetails = () => {
             <button
               className={`nav-link ${activeTab === tab ? 'active fw-semibold' : ''}`}
               onClick={() => setActiveTab(tab)}
-              style={{ whiteSpace: 'nowrap', borderRadius: '8px 8px 0 0', border: 'none', borderBottom: activeTab === tab ? '2px solid var(--bs-primary)' : '2px solid transparent' }}
+              style={{ 
+                whiteSpace: 'nowrap', 
+                borderRadius: '6px 6px 0 0', 
+                border: 'none', 
+                borderBottom: activeTab === tab ? '2px solid var(--dg-primary)' : '2px solid transparent',
+                fontSize: '0.82rem',
+                padding: '8px 14px',
+                color: activeTab === tab ? 'var(--dg-primary)' : 'var(--dg-text-secondary)',
+                background: 'transparent'
+              }}
             >
               {tab === 'Overview' && <><FaServer className="me-1" /> {tab}</>}
               {tab === 'Performance' && <><FaTachometerAlt className="me-1" /> {tab}</>}
@@ -907,6 +937,13 @@ const MachineDetails = () => {
       </ul>
 
       {renderTabContent()}
+
+      <MachineReportModal
+        show={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        machine={machine}
+        status={status}
+      />
     </div>
   );
 };

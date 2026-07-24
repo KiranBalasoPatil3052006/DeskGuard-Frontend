@@ -236,13 +236,14 @@ export default function AlertThresholds() {
           <div className="card" style={{ borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
             <div className="card-body p-3">
               <div className="d-flex align-items-center gap-2 mb-3">
-                <div className="input-group" style={{ maxWidth: '280px' }}>
-                  <span className="input-group-text bg-transparent border-end-0" style={{ borderRadius: '10px 0 0 10px' }}>
-                    <FaSearch className="text-muted" style={{ fontSize: '0.8rem' }} />
-                  </span>
+                <div className="position-relative" style={{ width: '220px' }}>
+                  <FaSearch className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)', fontSize: '0.82rem' }} />
                   <input 
-                    className="form-control border-start-0 ps-0" style={{ borderRadius: '0 10px 10px 0' }}
-                    placeholder="Search profiles..." value={search} onChange={e => setSearch(e.target.value)}
+                    className="form-control" 
+                    placeholder="Search profiles..." 
+                    value={search} 
+                    onChange={e => setSearch(e.target.value)}
+                    style={{ paddingLeft: '2.3rem', height: '36px', fontSize: '0.8rem' }}
                   />
                 </div>
                 <button className="btn btn-success btn-sm ms-auto d-flex align-items-center gap-1" onClick={() => setShowCreate(true)}>

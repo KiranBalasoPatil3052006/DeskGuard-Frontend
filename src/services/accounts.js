@@ -16,6 +16,10 @@ export function updateAccount(id, data) {
   return api.put(`/accounts/${id}`, data);
 }
 
+export function resetAccountPassword(id, data) {
+  return api.post(`/accounts/${id}/reset-password`, data);
+}
+
 export function deleteAccount(id) {
   return api.delete(`/accounts/${id}`);
 }

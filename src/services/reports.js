@@ -24,3 +24,18 @@ export function downloadReport(id) {
 export function deleteReport(id) {
   return api.delete(`/reports/${id}`);
 }
+
+/** Download AMC Health Summary Report PDF */
+export function downloadAmcHealthSummaryReport(params) {
+  return api.get('/reports/amc-health-summary', { params, responseType: 'blob' });
+}
+
+/** Download Asset Inventory Report PDF */
+export function downloadAssetInventoryReport(params) {
+  return api.get('/reports/asset-inventory', { params, responseType: 'blob' });
+}
+
+/** Download Single Machine Report PDF */
+export function generateMachineReport(params) {
+  return api.get('/reports/machine', { params, responseType: 'blob' });
+}

@@ -13,7 +13,7 @@ import {
   FaDownload,
   FaTimes
 } from 'react-icons/fa';
-import { getReports, generateReport, downloadReport, deleteReport } from '../../services/reports';
+import { getReports, generateReport, downloadReport, deleteReport, downloadAmcHealthSummaryReport, downloadAssetInventoryReport } from '../../services/reports';
 
 const TYPE_OPTIONS = ['health', 'inventory', 'security', 'custom'];
 const FORMAT_OPTIONS = ['pdf', 'excel', 'csv'];
@@ -41,6 +41,136 @@ const ReportsList = () => {
 
   const [downloading, setDownloading] = useState(null);
 
+  const [showAmcModal, setShowAmcModal] = useState(false);
+  const [showAssetModal, setShowAssetModal] = useState(false);
+  const [assetCompanyId, setAssetCompanyId] = useState('');
+  const [assetMachineId, setAssetMachineId] = useState('');
+  const [assetPlan, setAssetPlan] = useState('');
+  const [assetDateFrom, setAssetDateFrom] = useState('');
+  const [assetDateTo, setAssetDateTo] = useState('');
+  const [generatingAsset, setGeneratingAsset] = useState(false);
+  const [assetSuccessMessage, setAssetSuccessMessage] = useState('');
+  const [assetErrorMessage, setAssetErrorMessage] = useState('');
+
+  const handleGenerateAsset = async (e) => {
+    e.preventDefault();
+    setGeneratingAsset(true);
+    setAssetSuccessMessage('');
+    setAssetErrorMessage('');
+    try {
+      const params = {};
+      if (assetCompanyId) {
+        params.companyId = assetCompanyId;
+        params.customerId = assetCompanyId;
+      }
+      if (assetMachineId) {
+        params.machineId = assetMachineId;
+      }
+      if (assetPlan) params.amcPlan = assetPlan;
+      if (assetDateFrom) params.dateFrom = new Date(assetDateFrom).toISOString();
+      if (assetDateTo) params.dateTo = new Date(assetDateTo).toISOString();
+
+      const res = await downloadAssetInventoryReport(params);
+      
+      let filename = `Asset_Inventory_${assetCompanyId || 'Report'}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.pdf`;
+      const disposition = res.headers ? res.headers['content-disposition'] : null;
+      if (disposition && disposition.indexOf('attachment') !== -1) {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) { 
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      setAssetSuccessMessage('Asset Inventory Report generated and downloaded successfully!');
+      setTimeout(() => {
+        setShowAssetModal(false);
+        setAssetSuccessMessage('');
+        setAssetCompanyId('');
+        setAssetMachineId('');
+        setAssetPlan('');
+        setAssetDateFrom('');
+        setAssetDateTo('');
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to generate Asset Inventory:', err);
+      setAssetErrorMessage('Failed to generate report. Please ensure target exists and you have administrator permissions.');
+    } finally {
+      setGeneratingAsset(false);
+    }
+  };
+  const [amcCompanyId, setAmcCompanyId] = useState('');
+  const [amcPlan, setAmcPlan] = useState('');
+  const [amcDateFrom, setAmcDateFrom] = useState('');
+  const [amcDateTo, setAmcDateTo] = useState('');
+  const [generatingAmc, setGeneratingAmc] = useState(false);
+  const [amcSuccessMessage, setAmcSuccessMessage] = useState('');
+  const [amcErrorMessage, setAmcErrorMessage] = useState('');
+
+  const handleGenerateAmc = async (e) => {
+    e.preventDefault();
+    setGeneratingAmc(true);
+    setAmcSuccessMessage('');
+    setAmcErrorMessage('');
+    try {
+      const params = {};
+      if (amcCompanyId) {
+        params.companyId = amcCompanyId;
+        params.customerId = amcCompanyId;
+      }
+      if (amcPlan) params.amcPlan = amcPlan;
+      if (amcDateFrom) params.dateFrom = new Date(amcDateFrom).toISOString();
+      if (amcDateTo) params.dateTo = new Date(amcDateTo).toISOString();
+
+      const res = await downloadAmcHealthSummaryReport(params);
+      
+      let filename = `AMC_Health_Summary_${amcCompanyId || 'Report'}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.pdf`;
+      const disposition = res.headers ? res.headers['content-disposition'] : null;
+      if (disposition && disposition.indexOf('attachment') !== -1) {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) { 
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      setAmcSuccessMessage('AMC Health Summary Report generated and downloaded successfully!');
+      setTimeout(() => {
+        setShowAmcModal(false);
+        setAmcSuccessMessage('');
+        setAmcCompanyId('');
+        setAmcPlan('');
+        setAmcDateFrom('');
+        setAmcDateTo('');
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to generate AMC Health Summary:', err);
+      setAmcErrorMessage('Failed to generate report. Please ensure the target Customer ID exists and you have administrator permissions.');
+    } finally {
+      setGeneratingAmc(false);
+    }
+  };
+
   useEffect(() => {
     setCurrentPage(1);
   }, [typeFilter, formatFilter, searchFilter]);
@@ -54,16 +184,20 @@ const ReportsList = () => {
       if (formatFilter) params.format = formatFilter;
       if (searchFilter) params.search = searchFilter;
       const res = await getReports(params);
-      const d = res.data;
-      const list = d.data || d || [];
-      setReports(list);
-      setLastPage(d.last_page || 1);
-      const total = d.total || list.length;
+      // The api.js interceptor already unwraps response.data for non-blob responses
+      // res could be: { data: [...], total: N, last_page: N } (new format)
+      //            or: { success: true, data: [...] } (ApiResponse wrapper)
+      const d = res?.data ?? res;
+      const list = Array.isArray(d) ? d : (d?.data ?? d ?? []);
+      const reportList = Array.isArray(list) ? list : [];
+      setReports(reportList);
+      setLastPage(d?.last_page || res?.last_page || 1);
+      const total = d?.total || res?.total || reportList.length;
       const byType = { health: 0, inventory: 0, security: 0, custom: 0 };
       const byFormat = { pdf: 0, excel: 0, csv: 0 };
-      (d.data || d || []).forEach(r => {
-        if (byType[r.type] !== undefined) byType[r.type]++;
-        if (byFormat[r.format] !== undefined) byFormat[r.format]++;
+      reportList.forEach(r => {
+        if (r.type && byType[r.type] !== undefined) byType[r.type]++;
+        if (r.format && byFormat[r.format] !== undefined) byFormat[r.format]++;
       });
       setSummary({ total, ...byType, ...byFormat });
     } catch (err) {
@@ -97,15 +231,31 @@ const ReportsList = () => {
     }
   };
 
-  const handleDownload = async (id) => {
+  const handleDownload = async (report) => {
+    const id = typeof report === 'object' ? report.id : report;
+    const fmt = typeof report === 'object' ? (report.format || 'pdf') : 'pdf';
     setDownloading(id);
     try {
       const res = await downloadReport(id);
-      const blob = res.data instanceof Blob ? res.data : new Blob([res.data]);
+      // downloadReport uses responseType: 'blob', so the interceptor returns the full response
+      const blobData = res?.data ?? res;
+      const blob = blobData instanceof Blob ? blobData : new Blob([blobData], { type: 'application/pdf' });
+
+      // Try to extract filename from content-disposition header
+      let filename = `report-${id}.${fmt}`;
+      const disposition = res?.headers?.['content-disposition'];
+      if (disposition && disposition.indexOf('attachment') !== -1) {
+        const filenameRegex = /filename[^;=\n]*=(['"]?)([^'"\n;]+)\1/;
+        const matches = filenameRegex.exec(disposition);
+        if (matches && matches[2]) {
+          filename = matches[2];
+        }
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `report-${id}.${formatFilter || 'pdf'}`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -159,51 +309,55 @@ const ReportsList = () => {
   return (
     <div className="container-fluid p-0">
       {/* Page Header */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4 gap-3">
         <div>
-          <h3 className="text-dark-blue fw-bold mb-1">System Reports</h3>
-          <nav aria-label="breadcrumb">
-            <ol className="breadcrumb mb-0 small">
-              <li className="breadcrumb-item"><Link to="/dashboard" className="text-decoration-none">Home</Link></li>
-              <li className="breadcrumb-item active" aria-current="page">Reports</li>
-            </ol>
-          </nav>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>System Reports</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--dg-text-muted)', margin: 0 }}>
+            Generate, schedule, download and manage system health, security, and hardware reports.
+          </p>
         </div>
-        <div>
-          <button className="btn btn-primary d-flex align-items-center" onClick={() => setShowGenerateModal(true)}>
-            <FaFileAlt className="me-2" /> Generate New Report
+        <div className="d-flex gap-2">
+          <button className="btn btn-outline-primary d-flex align-items-center gap-2" onClick={() => setShowAmcModal(true)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+            <FaFilePdf size={12} />
+            <span>Generate AMC Health Summary</span>
+          </button>
+          <button className="btn btn-outline-secondary d-flex align-items-center gap-2" onClick={() => setShowAssetModal(true)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+            <FaFilePdf size={12} />
+            <span>Generate Asset Inventory</span>
+          </button>
+          <button className="btn btn-primary d-flex align-items-center gap-2" onClick={() => setShowGenerateModal(true)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+            <FaFileAlt size={12} />
+            <span>Generate Report</span>
           </button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="row g-4 mb-4">
+      <div className="row g-3 mb-4">
         {summaryCards.map((card, idx) => (
           <div className="col-12 col-sm-6 col-xl-3" key={idx}>
-            <div className="card border-0 glass-card h-100">
-              <div className="card-body d-flex align-items-center">
-                <div
-                  className={`text-${card.color} me-3 d-flex align-items-center justify-content-center rounded`}
-                  style={{ width: '48px', height: '48px', backgroundColor: `#${card.bg}`, fontSize: '1.25rem' }}
-                >
+            <div className="summary-stat-card">
+              <div className="summary-card-header">
+                <div className={`summary-icon-wrapper icon-${card.color}`}>
                   {card.icon}
                 </div>
-                <div>
-                  <h6 className="text-muted mb-0 small">{card.title}</h6>
-                  <h4 className="mb-0 fw-bold text-dark-blue">{card.value}</h4>
-                </div>
+                <span>{card.title}</span>
+              </div>
+              <div className="summary-card-value">{card.value}</div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--dg-text-muted)' }}>
+                System generated report count
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="card glass-card border-0 mb-4">
+      <div className="card mb-4">
         {/* Filters */}
-        <div className="card-body border-bottom border-light bg-transparent">
-          <div className="row g-3">
-            <div className="col-12 col-lg-4">
-              <label className="form-label small text-muted mb-1">Report Type</label>
+        <div className="card-body border-bottom border-light">
+          <div className="row g-3 align-items-end">
+            <div className="col-12 col-md-3">
+              <label className="form-label">Report Type</label>
               <select className="form-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
                 <option value="">All Types</option>
                 {TYPE_OPTIONS.map(t => (
@@ -211,8 +365,8 @@ const ReportsList = () => {
                 ))}
               </select>
             </div>
-            <div className="col-12 col-lg-4">
-              <label className="form-label small text-muted mb-1">Format</label>
+            <div className="col-12 col-md-3">
+              <label className="form-label">Format</label>
               <select className="form-select" value={formatFilter} onChange={e => setFormatFilter(e.target.value)}>
                 <option value="">All Formats</option>
                 {FORMAT_OPTIONS.map(f => (
@@ -220,16 +374,17 @@ const ReportsList = () => {
                 ))}
               </select>
             </div>
-            <div className="col-12 col-lg-4">
-              <label className="form-label small text-muted mb-1">Generated By</label>
-              <div className="input-group">
-                <span className="input-group-text bg-white"><FaSearch className="text-muted" /></span>
+            <div className="col-12 col-md-6">
+              <label className="form-label">Search Reports</label>
+              <div className="position-relative">
+                <FaSearch className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)', fontSize: '0.82rem' }} />
                 <input
                   type="text"
-                  className="form-control border-start-0"
-                  placeholder="Search by user..."
+                  className="form-control"
+                  placeholder="Search by generated user..."
                   value={searchFilter}
                   onChange={e => setSearchFilter(e.target.value)}
+                  style={{ paddingLeft: '32px' }}
                 />
               </div>
             </div>
@@ -244,63 +399,63 @@ const ReportsList = () => {
             </div>
           ) : error ? (
             <div className="text-center py-5">
-              <h6 className="text-danger mb-1">Error Loading Reports</h6>
-              <p className="text-muted mb-0">{error}</p>
-              <button className="btn btn-outline-primary btn-sm mt-3" onClick={fetchReports}>Retry</button>
+              <h6 className="text-danger mb-1 fw-bold">Error Loading Reports</h6>
+              <p className="text-muted small mb-3">{error}</p>
+              <button className="btn btn-outline-secondary btn-sm" onClick={fetchReports}>Retry</button>
             </div>
           ) : reports.length === 0 ? (
             <div className="text-center py-5">
-              <FaFileAlt className="text-muted mb-3" style={{ fontSize: '48px', opacity: 0.4 }} />
-              <h6 className="fw-bold mb-1 text-dark-blue">No Reports Found</h6>
-              <p className="text-muted mb-0">No reports match the current filters.</p>
+              <FaFileAlt className="text-muted mb-3" style={{ fontSize: '42px', opacity: 0.3 }} />
+              <h6 className="fw-bold mb-1" style={{ color: 'var(--dg-text-primary)' }}>No Reports Found</h6>
+              <p className="text-muted small">No reports match the current filters.</p>
             </div>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0">
-                <thead className="table-light text-muted" style={{ fontSize: '0.85rem' }}>
+                <thead>
                   <tr>
                     <th className="ps-4">Report ID</th>
                     <th>Type</th>
                     <th>Format</th>
                     <th>Generated By</th>
                     <th>Generated At</th>
-                    <th className="pe-4 text-center">Actions</th>
+                    <th className="pe-4 text-end">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {reports.map((report) => (
-                    <tr key={report.id} style={{ fontSize: '0.9rem' }}>
-                      <td className="ps-4 text-muted font-monospace">#{report.id}</td>
+                    <tr key={report.id}>
+                      <td className="ps-4 text-muted font-mono" style={{ fontSize: '0.78rem' }}>#{report.id}</td>
                       <td>{typeBadge(report.type)}</td>
                       <td>
-                        <span className="d-flex align-items-center gap-1">
+                        <span className="d-inline-flex align-items-center gap-1.5 fw-semibold" style={{ fontSize: '0.8rem' }}>
                           {formatIcon(report.format)} {report.format.toUpperCase()}
                         </span>
                       </td>
-                      <td>{report.generated_by || '—'}</td>
+                      <td className="fw-semibold">{report.generated_by || '—'}</td>
                       <td className="text-muted">
                         {report.generated_at ? new Date(report.generated_at).toLocaleString() : '—'}
                       </td>
-                      <td className="pe-4 text-center">
-                        <div className="btn-group shadow-sm">
+                      <td className="pe-4 text-end">
+                        <div className="d-inline-flex gap-2">
                           <button
-                            className="btn btn-sm btn-light border"
-                            title="Download"
+                            className="action-btn"
+                            title="Download Report"
                             onClick={() => handleDownload(report.id)}
                             disabled={downloading === report.id}
                           >
                             {downloading === report.id ? (
                               <span className="spinner-border spinner-border-sm" />
                             ) : (
-                              <FaDownload className="text-primary" />
+                              <FaDownload />
                             )}
                           </button>
                           <button
-                            className="btn btn-sm btn-light border"
-                            title="Delete"
+                            className="action-btn danger"
+                            title="Delete Report"
                             onClick={() => setDeleteConfirm(report.id)}
                           >
-                            <FaTrash className="text-danger" />
+                            <FaTrash />
                           </button>
                         </div>
                       </td>
@@ -318,29 +473,29 @@ const ReportsList = () => {
             <span className="text-muted small">
               Page {currentPage} of {lastPage}
             </span>
-            <div className="d-flex gap-2">
+            <div className="dg-pagination">
               <button
-                className="btn btn-sm btn-outline-primary"
+                className="page-btn"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(p => p - 1)}
               >
-                Previous
+                &lt;
               </button>
               {Array.from({ length: lastPage }, (_, i) => i + 1).map(page => (
                 <button
                   key={page}
-                  className={`btn btn-sm ${currentPage === page ? 'btn-primary' : 'btn-outline-primary'}`}
+                  className={`page-btn ${currentPage === page ? 'active' : ''}`}
                   onClick={() => setCurrentPage(page)}
                 >
                   {page}
                 </button>
               ))}
               <button
-                className="btn btn-sm btn-outline-primary"
+                className="page-btn"
                 disabled={currentPage === lastPage}
                 onClick={() => setCurrentPage(p => p + 1)}
               >
-                Next
+                &gt;
               </button>
             </div>
           </div>
@@ -350,54 +505,56 @@ const ReportsList = () => {
       {/* Generate Report Modal */}
       {showGenerateModal && (
         <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
+          className="modal d-block"
           onClick={() => setShowGenerateModal(false)}
         >
           <div
-            className="card p-4"
-            style={{ width: '480px', borderRadius: '16px' }}
+            className="modal-dialog modal-dialog-centered"
             onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '460px' }}
           >
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-bold mb-0 text-dark-blue">Generate New Report</h5>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => setShowGenerateModal(false)}>
-                <FaTimes />
-              </button>
-            </div>
-            <div className="mb-3">
-              <label className="form-label small text-muted">Report Type</label>
-              <select className="form-select" value={genType} onChange={e => setGenType(e.target.value)}>
-                {TYPE_OPTIONS.map(t => (
-                  <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-3">
-              <label className="form-label small text-muted">Format</label>
-              <select className="form-select" value={genFormat} onChange={e => setGenFormat(e.target.value)}>
-                {FORMAT_OPTIONS.map(f => (
-                  <option key={f} value={f}>{f.toUpperCase()}</option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-3">
-              <label className="form-label small text-muted">
-                Filters <span className="text-muted">(optional JSON)</span>
-              </label>
-              <textarea
-                className="form-control"
-                rows={3}
-                placeholder='e.g. {"date_from": "2024-01-01", "date_to": "2024-12-31"}'
-                value={genFilters}
-                onChange={e => setGenFilters(e.target.value)}
-              />
-            </div>
-            <div className="d-flex justify-content-end gap-2">
-              <button className="btn btn-secondary" onClick={() => setShowGenerateModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
-                {generating ? <><span className="spinner-border spinner-border-sm me-1" /> Generating...</> : 'Generate'}
-              </button>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Generate New Report</h5>
+                <button className="btn-close" onClick={() => setShowGenerateModal(false)} />
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label">Report Type</label>
+                  <select className="form-select" value={genType} onChange={e => setGenType(e.target.value)}>
+                    {TYPE_OPTIONS.map(t => (
+                      <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Format</label>
+                  <select className="form-select" value={genFormat} onChange={e => setGenFormat(e.target.value)}>
+                    {FORMAT_OPTIONS.map(f => (
+                      <option key={f} value={f}>{f.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">
+                    Filters <span className="text-muted">(optional JSON)</span>
+                  </label>
+                  <textarea
+                    className="form-control font-mono"
+                    rows={3}
+                    placeholder='e.g. {"date_from": "2024-01-01"}'
+                    value={genFilters}
+                    onChange={e => setGenFilters(e.target.value)}
+                    style={{ fontSize: '0.8rem' }}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-outline-secondary" onClick={() => setShowGenerateModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
+                  {generating ? 'Generating...' : 'Generate'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -406,22 +563,283 @@ const ReportsList = () => {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
+          className="modal d-block"
           onClick={() => !deleting && setDeleteConfirm(null)}
         >
           <div
-            className="card p-4"
-            style={{ width: '400px', borderRadius: '16px' }}
+            className="modal-dialog modal-dialog-centered"
             onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '380px' }}
           >
-            <h5 className="fw-bold mb-3 text-dark-blue">Confirm Delete</h5>
-            <p className="text-muted mb-4">Are you sure you want to delete this report? This action cannot be undone.</p>
-            <div className="d-flex justify-content-end gap-2">
-              <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)} disabled={deleting}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => handleDelete(deleteConfirm)} disabled={deleting}>
-                {deleting ? 'Deleting...' : 'Delete'}
-              </button>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Delete</h5>
+                <button className="btn-close" onClick={() => setDeleteConfirm(null)} disabled={deleting} />
+              </div>
+              <div className="modal-body">
+                <p className="text-muted mb-0 small">Are you sure you want to delete this report? This action cannot be undone.</p>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-outline-secondary" onClick={() => setDeleteConfirm(null)} disabled={deleting}>Cancel</button>
+                <button className="btn btn-danger" onClick={() => handleDelete(deleteConfirm)} disabled={deleting}>
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generate AMC Health Summary Modal */}
+      {showAmcModal && (
+        <div
+          className="modal d-block"
+          onClick={() => !generatingAmc && setShowAmcModal(false)}
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '480px' }}
+          >
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header bg-primary text-white py-3">
+                <h5 className="modal-title fw-bold" style={{ fontSize: '1.1rem' }}>Generate AMC Health Summary</h5>
+                <button 
+                  className="btn-close btn-close-white" 
+                  onClick={() => setShowAmcModal(false)} 
+                  disabled={generatingAmc}
+                />
+              </div>
+              <form onSubmit={handleGenerateAmc}>
+                <div className="modal-body p-4">
+                  {amcSuccessMessage && (
+                    <div className="alert alert-success border-0 small py-2 mb-3" role="alert">
+                      {amcSuccessMessage}
+                    </div>
+                  )}
+                  {amcErrorMessage && (
+                    <div className="alert alert-danger border-0 small py-2 mb-3" role="alert">
+                      {amcErrorMessage}
+                    </div>
+                  )}
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Customer / Company ID</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="e.g. 1"
+                      value={amcCompanyId}
+                      onChange={e => setAmcCompanyId(e.target.value)}
+                      disabled={generatingAmc}
+                      min="1"
+                    />
+                    <div className="form-text text-muted" style={{ fontSize: '0.72rem' }}>
+                      Defaults to your company if left blank.
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">AMC Plan Name</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Gold Premium Support"
+                      value={amcPlan}
+                      onChange={e => setAmcPlan(e.target.value)}
+                      disabled={generatingAmc}
+                    />
+                    <div className="form-text text-muted" style={{ fontSize: '0.72rem' }}>
+                      Overrides current plan label if specified.
+                    </div>
+                  </div>
+
+                  <div className="row g-3">
+                    <div className="col-6">
+                      <label className="form-label small fw-semibold text-muted">Date From</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={amcDateFrom}
+                        onChange={e => setAmcDateFrom(e.target.value)}
+                        disabled={generatingAmc}
+                      />
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label small fw-semibold text-muted">Date To</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={amcDateTo}
+                        onChange={e => setAmcDateTo(e.target.value)}
+                        disabled={generatingAmc}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer bg-light border-top-0 py-3">
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-secondary btn-sm" 
+                    onClick={() => setShowAmcModal(false)} 
+                    disabled={generatingAmc}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary btn-sm d-flex align-items-center gap-2" 
+                    disabled={generatingAmc}
+                  >
+                    {generatingAmc ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" />
+                        <span>Generating PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaFilePdf />
+                        <span>Generate & Download</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generate Asset Inventory Modal */}
+      {showAssetModal && (
+        <div
+          className="modal d-block"
+          onClick={() => !generatingAsset && setShowAssetModal(false)}
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '480px' }}
+          >
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header bg-secondary text-white py-3">
+                <h5 className="modal-title fw-bold" style={{ fontSize: '1.1rem' }}>Generate Asset Inventory</h5>
+                <button 
+                  className="btn-close btn-close-white" 
+                  onClick={() => setShowAssetModal(false)} 
+                  disabled={generatingAsset}
+                />
+              </div>
+              <form onSubmit={handleGenerateAsset}>
+                <div className="modal-body p-4">
+                  {assetSuccessMessage && (
+                    <div className="alert alert-success border-0 small py-2 mb-3" role="alert">
+                      {assetSuccessMessage}
+                    </div>
+                  )}
+                  {assetErrorMessage && (
+                    <div className="alert alert-danger border-0 small py-2 mb-3" role="alert">
+                      {assetErrorMessage}
+                    </div>
+                  )}
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Customer / Company ID</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="e.g. 1"
+                      value={assetCompanyId}
+                      onChange={e => setAssetCompanyId(e.target.value)}
+                      disabled={generatingAsset}
+                      min="1"
+                    />
+                    <div className="form-text text-muted" style={{ fontSize: '0.72rem' }}>
+                      Defaults to your company if left blank.
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Specific Machine Database ID (Optional)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="e.g. 15"
+                      value={assetMachineId}
+                      onChange={e => setAssetMachineId(e.target.value)}
+                      disabled={generatingAsset}
+                      min="1"
+                    />
+                    <div className="form-text text-muted" style={{ fontSize: '0.72rem' }}>
+                      Leave blank to include all monitored systems.
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">AMC Plan Name Override</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Platinum IT Support"
+                      value={assetPlan}
+                      onChange={e => setAssetPlan(e.target.value)}
+                      disabled={generatingAsset}
+                    />
+                  </div>
+
+                  <div className="row g-3">
+                    <div className="col-6">
+                      <label className="form-label small fw-semibold text-muted">Date From</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={assetDateFrom}
+                        onChange={e => setAssetDateFrom(e.target.value)}
+                        disabled={generatingAsset}
+                      />
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label small fw-semibold text-muted">Date To</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={assetDateTo}
+                        onChange={e => setAssetDateTo(e.target.value)}
+                        disabled={generatingAsset}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer bg-light border-top-0 py-3">
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-secondary btn-sm" 
+                    onClick={() => setShowAssetModal(false)} 
+                    disabled={generatingAsset}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-secondary btn-sm d-flex align-items-center gap-2" 
+                    disabled={generatingAsset}
+                  >
+                    {generatingAsset ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" />
+                        <span>Generating PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaFilePdf />
+                        <span>Generate & Download</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
