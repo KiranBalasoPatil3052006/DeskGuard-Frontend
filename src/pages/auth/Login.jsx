@@ -68,18 +68,25 @@ const Login = () => {
     setCustomerLoading(true);
     try {
       await requestCustomerOtp(mobileNumber);
-    } catch (err) {
-      console.warn('Backend OTP notice:', err);
-    } finally {
-      setCustomerLoading(false);
       setOtpStep(2);
       setOtp('111111');
+    } catch (err) {
+      console.warn('Backend OTP request notice:', err);
+      // In dev mode, still advance to step 2 with prefilled 111111 so testing is never blocked
+      setOtpStep(2);
+      setOtp('111111');
+      const msg = err?.error?.message || err?.message || err?.data?.message;
+      if (msg && typeof msg === 'string') {
+        setCustomerError(`Dev Notice: ${msg}`);
+      }
+    } finally {
+      setCustomerLoading(false);
     }
   };
 
   // Customer Verify OTP Handler
   const handleVerifyOtp = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setCustomerError('');
 
     if (otp.length !== 6) {
@@ -90,15 +97,20 @@ const Login = () => {
     setCustomerLoading(true);
     try {
       const res = await verifyCustomerOtp(mobileNumber, otp);
-      const data = res.data?.data || res.data || res;
-      if (data?.token && data?.user) {
-        loginWithToken(data.user, data.token);
+      // res can be ApiResponse wrapper or direct object
+      const payload = res?.data ?? res;
+      const authToken = payload?.token || res?.token;
+      const userData = payload?.user || res?.user;
+
+      if (authToken && userData) {
+        loginWithToken(userData, authToken);
         navigate('/dashboard', { replace: true });
       } else {
         setCustomerError('OTP verification succeeded but no session token was received.');
       }
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Invalid OTP. Development Mode: Use OTP 111111.';
+      console.error('OTP verify error:', err);
+      const msg = err?.error?.message || err?.message || err?.data?.message || (typeof err === 'string' ? err : 'Invalid OTP. Development Mode: Use OTP 111111.');
       setCustomerError(msg);
     } finally {
       setCustomerLoading(false);
