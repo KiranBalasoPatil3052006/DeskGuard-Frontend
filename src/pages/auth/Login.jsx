@@ -104,7 +104,8 @@ const Login = () => {
 
       if (authToken && userData) {
         loginWithToken(userData, authToken);
-        navigate('/dashboard', { replace: true });
+        const isCustomer = (userData?.role || '').toLowerCase() === 'customer';
+        navigate(isCustomer ? '/customer' : '/dashboard', { replace: true });
       } else {
         setCustomerError('OTP verification succeeded but no session token was received.');
       }

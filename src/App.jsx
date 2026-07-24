@@ -24,6 +24,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy-loaded pages (code-split by webpack)
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
+const CustomerDashboard = lazy(() => import('./pages/customer/CustomerDashboard'));
 const MachinesList = lazy(() => import('./pages/machines/MachinesList'));
 const MachineDetails = lazy(() => import('./pages/machines/MachineDetails'));
 const AlertsList = lazy(() => import('./pages/alerts/AlertsList'));
@@ -50,6 +51,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><Dashboard /></ErrorBoundary></Suspense>} />
+            <Route path="/customer" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><CustomerDashboard /></ErrorBoundary></Suspense>} />
             <Route path="/machines" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><MachinesList /></ErrorBoundary></Suspense>} />
             <Route path="/machines/:id" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><MachineDetails /></ErrorBoundary></Suspense>} />
             <Route path="/reports" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><ReportsList /></ErrorBoundary></Suspense>} />
