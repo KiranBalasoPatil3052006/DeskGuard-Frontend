@@ -15,7 +15,9 @@ import {
   FaShieldAlt,
   FaLock,
   FaSync,
-  FaInfoCircle
+  FaInfoCircle,
+  FaCalendarAlt,
+  FaExternalLinkAlt
 } from 'react-icons/fa';
 
 const CustomerMachineOverview = () => {
@@ -70,6 +72,7 @@ const CustomerMachineOverview = () => {
   const perf = data.performance || {};
   const storage = data.storage || [];
   const sec = data.security || {};
+  const amcCoverage = data.amc_coverage || { status: 'Active', start_date: null, end_date: null, remaining_days: 90 };
   const statusSec = data.status_section || {};
 
   return (
@@ -315,7 +318,91 @@ const CustomerMachineOverview = () => {
         </div>
       </div>
 
-      {/* SECTION 5: Status & Synchronization */}
+      {/* SECTION 5: AMC Coverage */}
+      <div>
+        <h5 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }} className="d-flex align-items-center gap-2">
+          <FaCalendarAlt style={{ color: '#2563eb' }} /> AMC Coverage
+        </h5>
+        <div
+          style={{
+            backgroundColor: amcCoverage.status === 'Active' ? '#f0fdf4' : '#fef2f2',
+            borderRadius: '14px',
+            border: `1px solid ${amcCoverage.status === 'Active' ? '#bbf7d0' : '#fecaca'}`,
+            padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px'
+          }}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                backgroundColor: amcCoverage.status === 'Active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+                color: amcCoverage.status === 'Active' ? '#16a34a' : '#dc2626',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.2rem'
+              }}
+            >
+              <FaShieldAlt />
+            </div>
+            <div>
+              <div className="d-flex align-items-center gap-2 mb-1">
+                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>AMC Status</span>
+                <span
+                  className="badge fw-bold"
+                  style={{
+                    fontSize: '0.72rem',
+                    backgroundColor: amcCoverage.status === 'Active' ? '#16a34a' : '#dc2626',
+                    color: '#ffffff',
+                    padding: '3px 12px',
+                    borderRadius: '20px'
+                  }}
+                >
+                  {amcCoverage.status}
+                </span>
+              </div>
+              <div className="d-flex flex-wrap align-items-center gap-3" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                <span>Start: {amcCoverage.start_date ? new Date(amcCoverage.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                <span>|</span>
+                <span>Expires: {amcCoverage.end_date ? new Date(amcCoverage.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                <span>|</span>
+                <span style={{ fontWeight: 700, color: amcCoverage.remaining_days > 30 ? '#16a34a' : amcCoverage.remaining_days > 0 ? '#ca8a04' : '#dc2626' }}>
+                  {amcCoverage.remaining_days > 0 ? `${amcCoverage.remaining_days} days remaining` : 'Expired'}
+                </span>
+              </div>
+            </div>
+          </div>
+          {amcCoverage.status === 'Expired' ? (
+            <button
+              className="btn btn-outline-danger btn-sm d-flex align-items-center gap-2"
+              onClick={() => navigate('/customer/support')}
+              style={{ padding: '8px 16px', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem' }}
+            >
+              <FaExternalLinkAlt size={11} />
+              <span>Renew AMC</span>
+            </button>
+          ) : (
+            <button
+              className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2"
+              onClick={() => navigate('/customer/support')}
+              style={{ padding: '8px 16px', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem' }}
+            >
+              <FaExternalLinkAlt size={11} />
+              <span>Renew AMC</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* SECTION 6: Status & Synchronization */}
       <div
         style={{
           backgroundColor: '#ffffff',

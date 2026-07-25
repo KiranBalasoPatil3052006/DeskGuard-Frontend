@@ -10,7 +10,9 @@ import {
   FaSync,
   FaBuilding,
   FaPhoneAlt,
-  FaEnvelope
+  FaEnvelope,
+  FaCalendarAlt,
+  FaShieldAlt
 } from 'react-icons/fa';
 
 const CustomerDashboard = () => {
@@ -55,6 +57,7 @@ const CustomerDashboard = () => {
 
   const customer = data?.customer_info || {};
   const summary = data?.summary_cards || { total_systems: 0, healthy: 0, warning: 0, critical: 0, offline: 0, average_health_score: 100 };
+  const amcInfo = data?.amc_info || { status: 'Active', start_date: null, end_date: null, remaining_days: 0 };
   const recentAlerts = data?.recent_alerts || [];
 
   return (
@@ -283,6 +286,72 @@ const CustomerDashboard = () => {
               </span>
               <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
                 Unreachable
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* AMC Status Card */}
+      <div
+        style={{
+          backgroundColor: amcInfo.status === 'Active' ? '#f0fdf4' : '#fef2f2',
+          borderRadius: '14px',
+          border: `1px solid ${amcInfo.status === 'Active' ? '#bbf7d0' : '#fecaca'}`,
+          padding: '18px 24px',
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px'
+        }}
+      >
+        <div className="d-flex align-items-center gap-3">
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              backgroundColor: amcInfo.status === 'Active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+              color: amcInfo.status === 'Active' ? '#16a34a' : '#dc2626',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.2rem'
+            }}
+          >
+            <FaShieldAlt />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2">
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569' }}>AMC Coverage</span>
+              <span
+                className={`badge fw-bold`}
+                style={{
+                  fontSize: '0.7rem',
+                  backgroundColor: amcInfo.status === 'Active' ? '#16a34a' : '#dc2626',
+                  color: '#ffffff',
+                  padding: '3px 10px',
+                  borderRadius: '20px'
+                }}
+              >
+                {amcInfo.status}
+              </span>
+            </div>
+            <div className="d-flex flex-wrap align-items-center gap-3 mt-1" style={{ fontSize: '0.82rem', color: '#64748b' }}>
+              <span className="d-flex align-items-center gap-1">
+                <FaCalendarAlt style={{ color: '#94a3b8', fontSize: '0.75rem' }} />
+                Start: {amcInfo.start_date ? new Date(amcInfo.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+              </span>
+              <span>|</span>
+              <span className="d-flex align-items-center gap-1">
+                <FaCalendarAlt style={{ color: '#94a3b8', fontSize: '0.75rem' }} />
+                Expires: {amcInfo.end_date ? new Date(amcInfo.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+              </span>
+              <span>|</span>
+              <span style={{ fontWeight: 700, color: amcInfo.remaining_days > 30 ? '#16a34a' : amcInfo.remaining_days > 0 ? '#ca8a04' : '#dc2626' }}>
+                {amcInfo.remaining_days > 0 ? `${amcInfo.remaining_days} days remaining` : 'Expired'}
               </span>
             </div>
           </div>

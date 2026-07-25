@@ -132,7 +132,7 @@ const CustomerSystems = () => {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginRight: '6px' }} className="d-none d-lg-inline">
               <FaFilter /> Filter:
             </span>
-            {['All', 'Healthy', 'Warning', 'Critical', 'Offline'].map((f) => (
+            {['All', 'Healthy', 'Warning', 'Critical', 'Offline', 'Expired'].map((f) => (
               <button
                 key={f}
                 onClick={() => {
