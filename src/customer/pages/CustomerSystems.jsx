@@ -38,14 +38,20 @@ const CustomerSystems = () => {
     fetchSystems();
   }, [filter]);
 
-  // Client-side search filtering
   const filteredSystems = useMemo(() => {
     return systems.filter((s) => {
       const matchSearch =
         !search ||
         s.computer_name?.toLowerCase().includes(search.toLowerCase()) ||
         s.operating_system?.toLowerCase().includes(search.toLowerCase());
-      const matchFilter = filter === 'All' || s.status?.toLowerCase() === filter.toLowerCase();
+      let matchFilter;
+      if (filter === 'All') {
+        matchFilter = true;
+      } else if (filter === 'Expired') {
+        matchFilter = s.amc_status?.toLowerCase() === 'expired';
+      } else {
+        matchFilter = s.status?.toLowerCase() === filter.toLowerCase();
+      }
       return matchSearch && matchFilter;
     });
   }, [systems, search, filter]);

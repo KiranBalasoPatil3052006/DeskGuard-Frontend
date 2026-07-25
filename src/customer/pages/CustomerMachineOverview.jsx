@@ -26,6 +26,7 @@ const CustomerMachineOverview = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   useEffect(() => {
     const fetchOverview = async () => {
@@ -380,19 +381,17 @@ const CustomerMachineOverview = () => {
               </div>
             </div>
           </div>
-          {amcCoverage.status === 'Expired' ? (
+          {showComingSoon && (
+            <div className="alert alert-info d-flex align-items-center gap-2 w-100 mb-0" role="alert" style={{ fontSize: '0.88rem' }}>
+              <FaInfoCircle />
+              <span>AMC renewal portal is coming soon. Please contact support for renewal assistance.</span>
+              <button type="button" className="btn-close ms-auto" onClick={() => setShowComingSoon(false)} aria-label="Close" />
+            </div>
+          )}
+          {!showComingSoon && (
             <button
-              className="btn btn-outline-danger btn-sm d-flex align-items-center gap-2"
-              onClick={() => navigate('/customer/support')}
-              style={{ padding: '8px 16px', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem' }}
-            >
-              <FaExternalLinkAlt size={11} />
-              <span>Renew AMC</span>
-            </button>
-          ) : (
-            <button
-              className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2"
-              onClick={() => navigate('/customer/support')}
+              className={`btn btn-sm d-flex align-items-center gap-2 ${amcCoverage.status === 'Expired' ? 'btn-outline-danger' : 'btn-outline-primary'}`}
+              onClick={() => setShowComingSoon(true)}
               style={{ padding: '8px 16px', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem' }}
             >
               <FaExternalLinkAlt size={11} />

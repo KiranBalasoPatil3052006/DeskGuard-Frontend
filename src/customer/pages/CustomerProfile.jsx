@@ -163,13 +163,20 @@ const CustomerProfile = () => {
 
           <div className="col-12 col-md-6">
             <div className="d-flex align-items-center gap-3 p-3 rounded-3" style={{ backgroundColor: '#f8fafc', border: '1px solid #f1f5f9' }}>
-              <FaShieldAlt className="text-success fs-4" />
+              <FaShieldAlt className={p.amc_status === 'Active' ? 'text-success fs-4' : 'text-danger fs-4'} />
               <div>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                  Account Status
+                  AMC Coverage
                 </span>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#10b981' }}>
-                  Active AMC Contract
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: p.amc_status === 'Active' ? '#10b981' : '#dc2626' }}>
+                  {p.amc_status || 'Active'}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                  {p.amc_start_date ? new Date(p.amc_start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'} - {p.amc_end_date ? new Date(p.amc_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                  &nbsp;|&nbsp;
+                  <span style={{ fontWeight: 700, color: (p.amc_remaining_days ?? 0) > 30 ? '#16a34a' : (p.amc_remaining_days ?? 0) > 0 ? '#ca8a04' : '#dc2626' }}>
+                    {(p.amc_remaining_days ?? 0) > 0 ? `${p.amc_remaining_days} days left` : 'Expired'}
+                  </span>
                 </div>
               </div>
             </div>
