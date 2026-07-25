@@ -7,9 +7,8 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'https://deskguardbackend-production.up.railway.app',
+        target: 'http://127.0.0.1:5100',
         changeOrigin: true,
-        secure: false,
       },
     },
   },

@@ -1,31 +1,37 @@
 import api from '../../services/api';
 
-/** Get Customer Dashboard Overview */
-export function getCustomerDashboard() {
-  return api.get('/customer/dashboard');
+/** Get customer dashboard summary metrics & recent alerts */
+export async function getCustomerDashboard() {
+  const response = await api.get('/customer-portal/dashboard');
+  return response.data?.data || response.data || response;
 }
 
-/** Get Customer Systems list (paginated, searchable, filterable, sortable) */
-export function getCustomerSystems(params) {
-  return api.get('/customer/systems', { params });
+/** Get list of systems registered under customer mobile number */
+export async function getCustomerSystems(params = {}) {
+  const response = await api.get('/customer-portal/systems', { params });
+  return response.data?.data || response.data || response;
 }
 
-/** Get Customer Machine Overview details */
-export function getCustomerSystemOverview(id) {
-  return api.get(`/customer/systems/${id}`);
+/** Get detailed overview of a single system */
+export async function getMachineOverview(id) {
+  const response = await api.get(`/customer-portal/systems/${id}`);
+  return response.data?.data || response.data || response;
 }
 
-/** Get Customer Alerts (read-only) */
-export function getCustomerAlerts(params) {
-  return api.get('/customer/alerts', { params });
+/** Get customer alerts (read-only) */
+export async function getCustomerAlerts(params = {}) {
+  const response = await api.get('/customer-portal/alerts', { params });
+  return response.data?.data || response.data || response;
 }
 
-/** Get Customer Profile */
-export function getCustomerProfile() {
-  return api.get('/customer/profile');
+/** Get customer account profile details */
+export async function getCustomerProfile() {
+  const response = await api.get('/customer-portal/profile');
+  return response.data?.data || response.data || response;
 }
 
-/** Get Customer Support Contact Info */
-export function getCustomerSupport() {
-  return api.get('/customer/support');
+/** Get AMC support contacts & info */
+export async function getCustomerSupport() {
+  const response = await api.get('/customer-portal/support');
+  return response.data?.data || response.data || response;
 }

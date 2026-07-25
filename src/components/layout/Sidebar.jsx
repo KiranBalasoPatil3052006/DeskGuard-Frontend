@@ -49,14 +49,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
     navigate('/login', { replace: true });
   };
 
-  const isCustomer = (role || '').toLowerCase() === 'customer';
-
-  const mainMenuItems = isCustomer ? [
-    { path: '/customer', name: 'Customer Portal', icon: <FaThLarge /> },
-    { path: '/machines', name: 'My Machines', icon: <FaLaptop /> },
-    { path: '/reports', name: 'My Reports', icon: <FaFileAlt /> },
-    { path: '/alerts', name: 'My Alerts', icon: <FaBell /> },
-  ] : [
+  const mainMenuItems = [
     { path: '/dashboard', name: 'Dashboard', icon: <FaThLarge /> },
     { path: '/machines', name: 'Machines', icon: <FaLaptop /> },
     { path: '/agents', name: 'Agents', icon: <FaUsers /> },
@@ -64,9 +57,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
     { path: '/alerts', name: 'Alerts', icon: <FaBell /> },
   ];
 
-  const configMenuItems = isCustomer ? [
-    { path: '/settings', name: 'Settings', icon: <FaCog /> },
-  ] : [
+  const configMenuItems = [
     { path: '/accounts', name: 'Accounts', icon: <FaUserPlus /> },
     { path: '/settings', name: 'Settings', icon: <FaCog /> },
   ];

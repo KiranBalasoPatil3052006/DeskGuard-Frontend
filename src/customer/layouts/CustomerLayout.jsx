@@ -1,131 +1,189 @@
-import React, { useState } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
-  FaShieldAlt,
-  FaThLarge,
   FaDesktop,
-  FaFileAlt,
-  FaBell,
+  FaExclamationTriangle,
   FaUser,
   FaHeadset,
   FaSignOutAlt,
-  FaBars,
-  FaTimes
+  FaShieldAlt,
+  FaHome
 } from 'react-icons/fa';
-import { useAuth } from '../../context/AuthContext';
 
 const CustomerLayout = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login', { replace: true });
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
-  const menuItems = [
-    { path: '/customer', name: 'Dashboard', icon: <FaThLarge /> },
-    { path: '/customer/systems', name: 'My Systems', icon: <FaDesktop /> },
-    { path: '/customer/reports', name: 'Reports', icon: <FaFileAlt /> },
-    { path: '/customer/alerts', name: 'Alerts', icon: <FaBell /> },
-    { path: '/customer/profile', name: 'Profile', icon: <FaUser /> },
-    { path: '/customer/support', name: 'Support', icon: <FaHeadset /> },
-  ];
-
   return (
-    <div className="d-flex" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main, #f8fafc)' }}>
-      {/* Customer Sidebar */}
-      <div
-        className={`bg-white border-end d-flex flex-column transition-all ${sidebarOpen ? 'px-3' : 'px-2'}`}
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+      {/* Customer Header */}
+      <header
         style={{
-          width: sidebarOpen ? '250px' : '70px',
-          minWidth: sidebarOpen ? '250px' : '70px',
-          transition: 'all 0.2s ease',
-          zIndex: 100
+          backgroundColor: '#ffffff',
+          borderBottom: '1px solid #e2e8f0',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}
       >
-        {/* Header Logo */}
-        <div className="d-flex align-items-center justify-content-between py-3 border-bottom mb-3">
-          <div className="d-flex align-items-center gap-2 overflow-hidden">
-            <div className="p-2 rounded-3 bg-primary text-white d-flex align-items-center justify-content-center">
-              <FaShieldAlt size={18} />
-            </div>
-            {sidebarOpen && (
-              <div>
-                <div className="fw-bold text-dark lh-1" style={{ fontSize: '1rem' }}>DeskGuard</div>
-                <div className="text-muted small" style={{ fontSize: '0.7rem' }}>Customer Portal</div>
+        <div className="container-fluid px-4" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          <div className="d-flex align-items-center justify-content-between" style={{ height: '68px' }}>
+            {/* Logo & Portal Badge */}
+            <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center gap-2" style={{ cursor: 'pointer' }} onClick={() => navigate('/customer/dashboard')}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    fontSize: '1.2rem',
+                    boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)'
+                  }}
+                >
+                  <FaShieldAlt />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontWeight: 800, fontSize: '1.15rem', color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                    DeskGuard
+                  </span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Customer Portal
+                  </span>
+                </div>
               </div>
-            )}
-          </div>
-          <button
-            className="btn btn-link text-muted p-1 border-0"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? <FaTimes size={14} /> : <FaBars size={14} />}
-          </button>
-        </div>
-
-        {/* Navigation Links */}
-        <div className="nav nav-pills flex-column gap-1 flex-grow-1">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.path !== '/customer' && location.pathname.startsWith(item.path));
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`nav-link d-flex align-items-center gap-3 py-2 px-3 fw-semibold ${isActive ? 'active bg-primary text-white shadow-sm' : 'text-secondary'}`}
-                style={{ borderRadius: '8px', fontSize: '0.9rem' }}
-                title={!sidebarOpen ? item.name : ''}
-              >
-                <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
-                {sidebarOpen && <span>{item.name}</span>}
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* User Info & Logout */}
-        <div className="border-top py-3 mt-auto">
-          {sidebarOpen && (
-            <div className="mb-2 px-2">
-              <div className="fw-bold text-dark small text-truncate">{user?.name || 'Customer User'}</div>
-              <div className="text-muted" style={{ fontSize: '0.72rem' }}>{user?.mobileNumber || user?.phone || 'Verified Customer'}</div>
             </div>
-          )}
-          <button
-            className="btn btn-outline-danger w-100 btn-sm d-flex align-items-center justify-content-center gap-2 py-2"
-            onClick={handleLogout}
-            style={{ borderRadius: '8px' }}
-          >
-            <FaSignOutAlt />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
+
+            {/* Navigation Links */}
+            <nav className="d-none d-md-flex align-items-center gap-1">
+              {[
+                { to: '/customer/dashboard', label: 'Dashboard', icon: <FaHome /> },
+                { to: '/customer/systems', label: 'My Systems', icon: <FaDesktop /> },
+                { to: '/customer/alerts', label: 'Alerts', icon: <FaExclamationTriangle /> },
+                { to: '/customer/profile', label: 'Profile', icon: <FaUser /> },
+                { to: '/customer/support', label: 'Support', icon: <FaHeadset /> }
+              ].map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    transition: 'all 0.2s ease',
+                    color: isActive ? '#2563eb' : '#64748b',
+                    backgroundColor: isActive ? 'rgba(37, 99, 235, 0.08)' : 'transparent'
+                  })}
+                >
+                  <span style={{ fontSize: '0.95rem' }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* Customer User Info & Logout */}
+            <div className="d-flex align-items-center gap-3">
+              <div className="d-none d-sm-flex flex-column text-end">
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                  {user?.name || user?.customer_name || 'AMC Customer'}
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>
+                  {user?.mobileNumber || user?.phone || user?.email || '9876543210'}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#0f172a';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ffffff';
+                  e.currentTarget.style.color = '#475569';
+                }}
+              >
+                <FaSignOutAlt />
+                <span className="d-none d-sm-inline">Logout</span>
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Main Content Area */}
-      <div className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0 }}>
-        {/* Top Navbar */}
-        <header className="bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-xs">
-          <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-primary-subtle text-primary border border-primary border-opacity-25 px-3 py-1 rounded-pill fw-bold small">
-              READ-ONLY CUSTOMER MONITORING
-            </span>
-          </div>
-          <div className="d-flex align-items-center gap-3">
-            <span className="small text-muted d-none d-sm-inline">
-              Welcome, <strong>{user?.name || 'Customer'}</strong>
-            </span>
-          </div>
-        </header>
+        {/* Mobile Navigation Row */}
+        <div className="d-flex d-md-none border-top px-3 py-2 justify-content-around" style={{ backgroundColor: '#ffffff', overflowX: 'auto' }}>
+          {[
+            { to: '/customer/dashboard', label: 'Dashboard', icon: <FaHome /> },
+            { to: '/customer/systems', label: 'Systems', icon: <FaDesktop /> },
+            { to: '/customer/alerts', label: 'Alerts', icon: <FaExclamationTriangle /> },
+            { to: '/customer/profile', label: 'Profile', icon: <FaUser /> },
+            { to: '/customer/support', label: 'Support', icon: <FaHeadset /> }
+          ].map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              style={({ isActive }) => ({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '2px',
+                padding: '6px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                textDecoration: 'none',
+                color: isActive ? '#2563eb' : '#64748b'
+              })}
+            >
+              <span style={{ fontSize: '1rem' }}>{item.icon}</span>
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </div>
+      </header>
 
-        {/* Page Content */}
-        <main className="flex-grow-1 p-4 overflow-auto">
+      {/* Main Page Area */}
+      <main style={{ flex: 1, padding: '24px 16px' }}>
+        <div className="container-fluid" style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
+
+      {/* Clean Customer Footer */}
+      <footer style={{ backgroundColor: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '16px 24px', fontSize: '0.8rem', color: '#64748b' }}>
+        <div className="container-fluid d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          <span>© {new Date().getFullYear()} DeskGuard Customer Self-Service Portal. All rights reserved.</span>
+          <span>AMC System Support Line: <strong>+91 1800-123-4567</strong></span>
+        </div>
+      </footer>
     </div>
   );
 };

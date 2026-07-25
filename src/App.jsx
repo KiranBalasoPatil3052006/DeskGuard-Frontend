@@ -14,16 +14,15 @@ const queryClient = new QueryClient({
   },
 });
 
-// Auth Pages (eager — on initial render path)
+// Auth Pages
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import MainLayout from './layouts/MainLayout';
-import CustomerLayout from './customer/layouts/CustomerLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 
-// Admin Lazy-loaded pages
+// Admin / Staff Pages
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
 const MachinesList = lazy(() => import('./pages/machines/MachinesList'));
 const MachineDetails = lazy(() => import('./pages/machines/MachineDetails'));
@@ -37,11 +36,11 @@ const AgentsList = lazy(() => import('./pages/agents/AgentsList'));
 const AgentDetails = lazy(() => import('./pages/agents/AgentDetails'));
 const ComponentShowcase = lazy(() => import('./pages/docs/ComponentShowcase'));
 
-// Customer Module Lazy-loaded pages
+// Customer Portal Pages
+const CustomerLayout = lazy(() => import('./customer/layouts/CustomerLayout'));
 const CustomerDashboard = lazy(() => import('./customer/pages/CustomerDashboard'));
 const CustomerSystems = lazy(() => import('./customer/pages/CustomerSystems'));
-const CustomerSystemDetails = lazy(() => import('./customer/pages/CustomerSystemDetails'));
-const CustomerReports = lazy(() => import('./customer/pages/CustomerReports'));
+const CustomerMachineOverview = lazy(() => import('./customer/pages/CustomerMachineOverview'));
 const CustomerAlerts = lazy(() => import('./customer/pages/CustomerAlerts'));
 const CustomerProfile = lazy(() => import('./customer/pages/CustomerProfile'));
 const CustomerSupport = lazy(() => import('./customer/pages/CustomerSupport'));
@@ -49,48 +48,47 @@ const CustomerSupport = lazy(() => import('./customer/pages/CustomerSupport'));
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <Routes>
-        {/* Auth Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+      <AuthProvider>
+        <Routes>
+          {/* Auth Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* Customer Portal Module Routes wrapped in CustomerLayout */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<CustomerLayout />}>
-            <Route path="/customer" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><CustomerDashboard /></ErrorBoundary></Suspense>} />
-            <Route path="/customer/systems" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><CustomerSystems /></ErrorBoundary></Suspense>} />
-            <Route path="/customer/systems/:id" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><CustomerSystemDetails /></ErrorBoundary></Suspense>} />
-            <Route path="/customer/reports" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><CustomerReports /></ErrorBoundary></Suspense>} />
-            <Route path="/customer/alerts" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><CustomerAlerts /></ErrorBoundary></Suspense>} />
-            <Route path="/customer/profile" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><CustomerProfile /></ErrorBoundary></Suspense>} />
-            <Route path="/customer/support" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><CustomerSupport /></ErrorBoundary></Suspense>} />
+          {/* Admin & Staff Authenticated Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<MainLayout />}>
+              <Route path="/dashboard" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><Dashboard /></ErrorBoundary></Suspense>} />
+              <Route path="/machines" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><MachinesList /></ErrorBoundary></Suspense>} />
+              <Route path="/machines/:id" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><MachineDetails /></ErrorBoundary></Suspense>} />
+              <Route path="/reports" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><ReportsList /></ErrorBoundary></Suspense>} />
+              <Route path="/alerts" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AlertsList /></ErrorBoundary></Suspense>} />
+              <Route path="/changes" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><ChangesList /></ErrorBoundary></Suspense>} />
+              <Route path="/settings" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><Settings /></ErrorBoundary></Suspense>} />
+              <Route path="/settings/alert-thresholds" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AlertThresholds /></ErrorBoundary></Suspense>} />
+              <Route path="/accounts" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AccountsList /></ErrorBoundary></Suspense>} />
+              <Route path="/agents" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AgentsList /></ErrorBoundary></Suspense>} />
+              <Route path="/agents/:id" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AgentDetails /></ErrorBoundary></Suspense>} />
+              <Route path="/components" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><ComponentShowcase /></ErrorBoundary></Suspense>} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Admin Authenticated Routes wrapped in MainLayout */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
-            <Route path="/dashboard" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><Dashboard /></ErrorBoundary></Suspense>} />
-            <Route path="/machines" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><MachinesList /></ErrorBoundary></Suspense>} />
-            <Route path="/machines/:id" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><MachineDetails /></ErrorBoundary></Suspense>} />
-            <Route path="/reports" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><ReportsList /></ErrorBoundary></Suspense>} />
-            <Route path="/alerts" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AlertsList /></ErrorBoundary></Suspense>} />
-            <Route path="/changes" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><ChangesList /></ErrorBoundary></Suspense>} />
-            <Route path="/settings" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><Settings /></ErrorBoundary></Suspense>} />
-            <Route path="/settings/alert-thresholds" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AlertThresholds /></ErrorBoundary></Suspense>} />
-            <Route path="/accounts" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AccountsList /></ErrorBoundary></Suspense>} />
-            <Route path="/agents" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AgentsList /></ErrorBoundary></Suspense>} />
-            <Route path="/agents/:id" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><AgentDetails /></ErrorBoundary></Suspense>} />
-            <Route path="/components" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border" role="status" /></div>}><ErrorBoundary><ComponentShowcase /></ErrorBoundary></Suspense>} />
+          {/* Customer Portal Authenticated Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<CustomerLayout />}>
+              <Route path="/customer/dashboard" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border text-primary" role="status" /></div>}><ErrorBoundary><CustomerDashboard /></ErrorBoundary></Suspense>} />
+              <Route path="/customer/systems" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border text-primary" role="status" /></div>}><ErrorBoundary><CustomerSystems /></ErrorBoundary></Suspense>} />
+              <Route path="/customer/systems/:id" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border text-primary" role="status" /></div>}><ErrorBoundary><CustomerMachineOverview /></ErrorBoundary></Suspense>} />
+              <Route path="/customer/alerts" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border text-primary" role="status" /></div>}><ErrorBoundary><CustomerAlerts /></ErrorBoundary></Suspense>} />
+              <Route path="/customer/profile" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border text-primary" role="status" /></div>}><ErrorBoundary><CustomerProfile /></ErrorBoundary></Suspense>} />
+              <Route path="/customer/support" element={<Suspense fallback={<div className="text-center py-5"><div className="spinner-border text-primary" role="status" /></div>}><ErrorBoundary><CustomerSupport /></ErrorBoundary></Suspense>} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Default Redirect */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </AuthProvider>
+          {/* Default Redirect */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

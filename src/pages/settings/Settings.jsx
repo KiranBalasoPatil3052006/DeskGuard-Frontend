@@ -98,8 +98,8 @@ const Settings = () => {
     require_numbers: true,
     require_special_chars: true,
     idle_session_timeout_minutes: 30,
-    max_failed_login_attempts: 5,
-    account_lockout_duration_minutes: 30,
+    max_failed_login_attempts: 0,
+    account_lockout_duration_minutes: 0,
   });
   const [secLoading, setSecLoading] = useState(false);
   const [secSaving, setSecSaving] = useState(false);

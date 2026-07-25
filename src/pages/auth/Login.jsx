@@ -34,7 +34,11 @@ const Login = () => {
       await login(email, password);
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      setAdminError(err?.message || err?.data?.message || 'Login failed. Please check your credentials.');
+      let errMsg = err?.message || err?.data?.message || 'Login failed. Please check your credentials.';
+      if (errMsg.toLowerCase().includes('locked') || errMsg.toLowerCase().includes('lockout')) {
+        errMsg = 'Invalid email or password. Please check your credentials.';
+      }
+      setAdminError(errMsg);
     }
   };
 
@@ -57,7 +61,7 @@ const Login = () => {
 
   // Customer Request OTP Handler
   const handleRequestOtp = async (e) => {
-    if (e) e.preventDefault();
+    e.preventDefault();
     setCustomerError('');
 
     if (mobileNumber.length !== 10) {
@@ -69,16 +73,10 @@ const Login = () => {
     try {
       await requestCustomerOtp(mobileNumber);
       setOtpStep(2);
-      setOtp('111111');
+      setOtp('');
     } catch (err) {
-      console.warn('Backend OTP request notice:', err);
-      // In dev mode, still advance to step 2 with prefilled 111111 so testing is never blocked
-      setOtpStep(2);
-      setOtp('111111');
-      const msg = err?.error?.message || err?.message || err?.data?.message;
-      if (msg && typeof msg === 'string') {
-        setCustomerError(`Dev Notice: ${msg}`);
-      }
+      const msg = err?.response?.data?.message || err?.message || 'Failed to send OTP.';
+      setCustomerError(msg);
     } finally {
       setCustomerLoading(false);
     }
@@ -86,7 +84,7 @@ const Login = () => {
 
   // Customer Verify OTP Handler
   const handleVerifyOtp = async (e) => {
-    if (e) e.preventDefault();
+    e.preventDefault();
     setCustomerError('');
 
     if (otp.length !== 6) {
@@ -97,21 +95,15 @@ const Login = () => {
     setCustomerLoading(true);
     try {
       const res = await verifyCustomerOtp(mobileNumber, otp);
-      // res can be ApiResponse wrapper or direct object
-      const payload = res?.data ?? res;
-      const authToken = payload?.token || res?.token;
-      const userData = payload?.user || res?.user;
-
-      if (authToken && userData) {
-        loginWithToken(userData, authToken);
-        const isCustomer = (userData?.role || '').toLowerCase() === 'customer';
-        navigate(isCustomer ? '/customer' : '/dashboard', { replace: true });
+      const data = res.data?.data || res.data || res;
+      if (data?.token && data?.user) {
+        loginWithToken(data.user, data.token);
+        navigate('/dashboard', { replace: true });
       } else {
         setCustomerError('OTP verification succeeded but no session token was received.');
       }
     } catch (err) {
-      console.error('OTP verify error:', err);
-      const msg = err?.error?.message || err?.message || err?.data?.message || (typeof err === 'string' ? err : 'Invalid OTP. Development Mode: Use OTP 111111.');
+      const msg = err?.response?.data?.message || err?.message || 'Invalid OTP. Please check the 6-digit code.';
       setCustomerError(msg);
     } finally {
       setCustomerLoading(false);
@@ -279,17 +271,6 @@ const Login = () => {
                   >
                     <FaArrowLeft style={{ fontSize: '0.75rem' }} /> Change
                   </button>
-                </div>
-
-                {/* Development Mode Notice */}
-                <div
-                  className="alert alert-info py-2 px-3 small border-0 mb-2"
-                  style={{ backgroundColor: 'rgba(13, 202, 240, 0.12)', color: '#055160', borderRadius: '8px' }}
-                >
-                  <div className="fw-bold d-flex align-items-center gap-1 mb-1">
-                    ⚡ Development Mode
-                  </div>
-                  <div>Use OTP: <strong>111111</strong></div>
                 </div>
 
                 <div>
