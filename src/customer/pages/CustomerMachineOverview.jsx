@@ -136,7 +136,7 @@ const CustomerMachineOverview = () => {
                 {sys.computer_name}
               </h2>
               <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>
-                {sys.operating_system} • {sys.windows_version}
+                {[sys.operating_system, sys.windows_version].filter(Boolean).join(' • ') || '--'}
               </div>
             </div>
           </div>
@@ -146,7 +146,7 @@ const CustomerMachineOverview = () => {
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
                 System Uptime
               </span>
-              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{sys.system_uptime}</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{sys.system_uptime || '--'}</div>
             </div>
             <div style={{ width: '1px', height: '36px', backgroundColor: '#e2e8f0' }} />
             <div>
@@ -174,14 +174,18 @@ const CustomerMachineOverview = () => {
                 <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
                   <FaMicrochip className="me-1" /> CPU Usage
                 </span>
-                <span className={`badge ${perf.cpu_status === 'Critical' ? 'bg-danger' : 'bg-success-subtle text-success'} fw-bold`}>
-                  {perf.cpu_status}
-                </span>
+                {perf.cpu_status != null && (
+                  <span className={`badge ${perf.cpu_status === 'Critical' ? 'bg-danger' : 'bg-success-subtle text-success'} fw-bold`}>
+                    {perf.cpu_status}
+                  </span>
+                )}
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>{perf.cpu_usage}%</div>
-              <div className="progress mt-2" style={{ height: '6px', backgroundColor: '#e2e8f0' }}>
-                <div className="progress-bar bg-primary" style={{ width: `${perf.cpu_usage}%` }} />
-              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>{perf.cpu_usage != null ? `${perf.cpu_usage}%` : '--'}</div>
+              {perf.cpu_usage != null && (
+                <div className="progress mt-2" style={{ height: '6px', backgroundColor: '#e2e8f0' }}>
+                  <div className="progress-bar bg-primary" style={{ width: `${perf.cpu_usage}%` }} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -192,14 +196,18 @@ const CustomerMachineOverview = () => {
                 <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
                   <FaMemory className="me-1" /> Memory Usage
                 </span>
-                <span className={`badge ${perf.memory_status === 'Critical' ? 'bg-danger' : 'bg-success-subtle text-success'} fw-bold`}>
-                  {perf.memory_status}
-                </span>
+                {perf.memory_status != null && (
+                  <span className={`badge ${perf.memory_status === 'Critical' ? 'bg-danger' : 'bg-success-subtle text-success'} fw-bold`}>
+                    {perf.memory_status}
+                  </span>
+                )}
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>{perf.memory_usage}%</div>
-              <div className="progress mt-2" style={{ height: '6px', backgroundColor: '#e2e8f0' }}>
-                <div className="progress-bar bg-info" style={{ width: `${perf.memory_usage}%` }} />
-              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>{perf.memory_usage != null ? `${perf.memory_usage}%` : '--'}</div>
+              {perf.memory_usage != null && (
+                <div className="progress mt-2" style={{ height: '6px', backgroundColor: '#e2e8f0' }}>
+                  <div className="progress-bar bg-info" style={{ width: `${perf.memory_usage}%` }} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -210,14 +218,18 @@ const CustomerMachineOverview = () => {
                 <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
                   <FaHdd className="me-1" /> Storage Usage
                 </span>
-                <span className={`badge ${perf.disk_status === 'Warning' ? 'bg-warning text-dark' : 'bg-success-subtle text-success'} fw-bold`}>
-                  {perf.disk_status}
-                </span>
+                {perf.disk_status != null && (
+                  <span className={`badge ${perf.disk_status === 'Warning' ? 'bg-warning text-dark' : 'bg-success-subtle text-success'} fw-bold`}>
+                    {perf.disk_status}
+                  </span>
+                )}
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>{perf.disk_usage}%</div>
-              <div className="progress mt-2" style={{ height: '6px', backgroundColor: '#e2e8f0' }}>
-                <div className="progress-bar bg-warning" style={{ width: `${perf.disk_usage}%` }} />
-              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>{perf.disk_usage != null ? `${perf.disk_usage}%` : '--'}</div>
+              {perf.disk_usage != null && (
+                <div className="progress mt-2" style={{ height: '6px', backgroundColor: '#e2e8f0' }}>
+                  <div className="progress-bar bg-warning" style={{ width: `${perf.disk_usage}%` }} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -233,7 +245,7 @@ const CustomerMachineOverview = () => {
                 </span>
               </div>
               <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', marginTop: '12px' }}>
-                <FaBatteryThreeQuarters className="me-1 text-primary" /> {perf.battery_status}
+                <FaBatteryThreeQuarters className="me-1 text-primary" /> {perf.battery_status || '--'}
               </div>
               <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>Power Status</div>
             </div>
@@ -285,10 +297,10 @@ const CustomerMachineOverview = () => {
         </h5>
         <div className="row g-3">
           {[
-            { title: 'Antivirus Protection', value: sec.antivirus, icon: <FaShieldAlt />, color: '#10b981' },
-            { title: 'Windows Firewall', value: sec.firewall, icon: <FaShieldAlt />, color: '#10b981' },
+            { title: 'Antivirus Protection', value: sec.antivirus, icon: <FaShieldAlt />, color: sec.antivirus === 'Enabled' ? '#10b981' : '#94a3b8' },
+            { title: 'Windows Firewall', value: sec.firewall, icon: <FaShieldAlt />, color: sec.firewall === 'Enabled' ? '#10b981' : '#94a3b8' },
             { title: 'Windows Update', value: sec.windows_update, icon: <FaSync />, color: sec.windows_update?.includes('Pending') ? '#f59e0b' : '#10b981' },
-            { title: 'BitLocker Encryption', value: sec.bitlocker, icon: <FaLock />, color: '#10b981' }
+            { title: 'BitLocker Encryption', value: sec.bitlocker || 'N/A', icon: <FaLock />, color: sec.bitlocker === 'Enabled' ? '#10b981' : '#94a3b8' }
           ].map((item, idx) => (
             <div key={idx} className="col-12 col-sm-6 col-xl-3">
               <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>

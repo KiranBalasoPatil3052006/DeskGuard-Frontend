@@ -98,7 +98,7 @@ const Login = () => {
       const data = res.data?.data || res.data || res;
       if (data?.token && data?.user) {
         loginWithToken(data.user, data.token);
-        navigate('/dashboard', { replace: true });
+        navigate('/customer/dashboard', { replace: true });
       } else {
         setCustomerError('OTP verification succeeded but no session token was received.');
       }
